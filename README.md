@@ -1,6 +1,6 @@
 # ema-data-access
 
-Lightweight Python tools to query and access EMA data from S3 and RDS.
+Lightweight Python tools to query and access EMA data.
 
 ## Setup
 
