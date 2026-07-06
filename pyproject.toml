@@ -12,10 +12,14 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.12,<4"
+requests = ">=2.28.0,<3.0.0"
 pre-commit = {version = "^4.0.0", optional = true}
 pytest = {version = ">=6.2.5", optional = true}
 pytest-cov = {version = "^4.0.0", optional = true}
 ruff = {version = ">=0.2.1", optional = true}
+
+[tool.poetry.scripts]
+ema-data-access = "ema_data_access.cli:main"
 
 [tool.poetry.extras]
 dev = ["pre-commit", "ruff"]
@@ -39,4 +43,5 @@ lint.ignore = ["D104", "D203", "D213", "D413", "PLR2004"]
 
 [tool.ruff.lint.per-file-ignores]
 # S101: Use of assert detected
-"tests/*" = ["S101"]
+# S105: Possible hardcoded password (false positives from asserting on token values)
+"tests/*" = ["S101", "S105"]
