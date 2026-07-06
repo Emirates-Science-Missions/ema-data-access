@@ -67,9 +67,9 @@ def query_ancillary(  # noqa: PLR0913
     apid : int, optional
         APID to match.
     timetag_start : str, optional
-        Only include files with timetag on or after this (ISO 8601).
+        Only include files with timetag on or after this, in YYYYMMDD format.
     timetag_end : str, optional
-        Only include files with timetag on or before this (ISO 8601).
+        Only include files with timetag on or before this, in YYYYMMDD format.
     file_extension : str, optional
         File extension to match, one of "csv", "fits", "pkts".
     version : int, optional
