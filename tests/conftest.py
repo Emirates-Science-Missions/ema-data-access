@@ -9,7 +9,7 @@ import ema_data_access
 
 @pytest.fixture(autouse=True)
 def _set_global_config(monkeypatch: pytest.fixture):
-    """Set the global data directory to a temporary directory."""
+    """Set the global config values for tests."""
     monkeypatch.setitem(
         ema_data_access.config, "DATA_ACCESS_URL", "https://api.test.com"
     )

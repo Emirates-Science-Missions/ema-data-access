@@ -91,14 +91,7 @@ def main():
     query_ancillary_parser = subparsers.add_parser("query-ancillary")
     add_query_ancillary_args(query_ancillary_parser)
 
-    try:
-        args = parser.parse_args()
-    except TypeError:
-        parser.exit(
-            status=1,
-            message="Please provide input parameters, "
-            "or use '-h' for more information.",
-        )
+    args = parser.parse_args()
 
     if args.url:
         ema_data_access.config["DATA_ACCESS_URL"] = args.url
