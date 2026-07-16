@@ -203,3 +203,26 @@ def test_generate_ema_file_path_invalid():
     """Test that a filename matching nothing raises with a clear message."""
     with pytest.raises(InvalidEmaFileError, match="does not match any known"):
         generate_ema_file_path("not_a_real_file.docx")
+
+
+def test_generate_ema_file_path_invalid_date_is_not_masked():
+    """A pattern match with an invalid calendar date must surface clearly.
+
+    It must not be swallowed into the generic "does not match any known
+    convention" message, since that would hide a real validation failure
+    behind wording that implies the filename's shape is unrecognized.
+    """
+    with pytest.raises(InvalidEmaFileError, match="failed to parse"):
+        generate_ema_file_path("ema_l1_anc_sc_123_20260230.csv")  # Feb 30
+
+
+def test_ancillary_file_path_invalid_date():
+    """Test that a matching-but-invalid date raises InvalidEmaFileError."""
+    with pytest.raises(InvalidEmaFileError, match="failed to parse"):
+        AncillaryFilePath.from_filename("ema_l1_anc_sc_123_20260230.csv")
+
+
+def test_science_file_path_l0_invalid_date():
+    """Test that an L0 science filename with an invalid date is rejected."""
+    with pytest.raises(InvalidEmaFileError, match="failed to parse"):
+        ScienceFilePath.from_filename("ema_l0_sci_emb_20260230.pkts")

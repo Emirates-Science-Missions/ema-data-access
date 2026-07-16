@@ -16,6 +16,10 @@ class InvalidEmaFileError(Exception):
     """Indicates a bad file type."""
 
 
+class _FilenamePatternMismatchError(InvalidEmaFileError):
+    """A filename didn't match a convention's pattern at all."""
+
+
 def _parse_ymd(value: str) -> datetime:
     """Parse a YYYYMMDD string into a UTC datetime."""
     return datetime.strptime(value, "%Y%m%d").replace(tzinfo=UTC)
@@ -55,8 +59,16 @@ class EmaFilePath(ABC):
         """
         match = cls._PATTERN.fullmatch(filename)
         if not match:
-            raise InvalidEmaFileError(f"{filename} does not match {cls.__name__}")
-        return cls(filename=filename, **cls._extract_fields(match))
+            raise _FilenamePatternMismatchError(
+                f"{filename} does not match {cls.__name__}"
+            )
+        try:
+            fields = cls._extract_fields(match)
+        except ValueError as err:
+            raise InvalidEmaFileError(
+                f"{filename} matched {cls.__name__} but failed to parse: {err}"
+            ) from err
+        return cls(filename=filename, **fields)
 
     @classmethod
     def _extract_fields(cls, match: re.Match) -> dict:
@@ -214,31 +226,40 @@ class ScienceFilePath(EmaFilePath):
         ScienceFilePath
             The parsed representation of `filename`.
         """
-        if match := cls._L0_PATTERN.fullmatch(filename):
-            return cls(
-                filename=filename,
-                payload=match["payload"],
-                data_level="l0",
-                timetag=_parse_ymd(match["timetag"]),
-                descriptor=None,
-                pred_rec=None,
-                version=None,
-                subversion=None,
-                file_extension=match["file_extension"],
-            )
-        if match := cls._L1_PATTERN.fullmatch(filename):
-            return cls(
-                filename=filename,
-                payload=match["payload"],
-                data_level=match["data_level"],
-                timetag=_parse_ymdthms(match["timetag"]),
-                descriptor=match["descriptor"],
-                pred_rec=match["pred_rec"],
-                version=int(match["version"]),
-                subversion=(int(match["subversion"]) if match["subversion"] else None),
-                file_extension=match["file_extension"],
-            )
-        raise InvalidEmaFileError(f"{filename} does not match ScienceFilePath")
+        try:
+            if match := cls._L0_PATTERN.fullmatch(filename):
+                return cls(
+                    filename=filename,
+                    payload=match["payload"],
+                    data_level="l0",
+                    timetag=_parse_ymd(match["timetag"]),
+                    descriptor=None,
+                    pred_rec=None,
+                    version=None,
+                    subversion=None,
+                    file_extension=match["file_extension"],
+                )
+            if match := cls._L1_PATTERN.fullmatch(filename):
+                return cls(
+                    filename=filename,
+                    payload=match["payload"],
+                    data_level=match["data_level"],
+                    timetag=_parse_ymdthms(match["timetag"]),
+                    descriptor=match["descriptor"],
+                    pred_rec=match["pred_rec"],
+                    version=int(match["version"]),
+                    subversion=(
+                        int(match["subversion"]) if match["subversion"] else None
+                    ),
+                    file_extension=match["file_extension"],
+                )
+        except ValueError as err:
+            raise InvalidEmaFileError(
+                f"{filename} matched {cls.__name__} but failed to parse: {err}"
+            ) from err
+        raise _FilenamePatternMismatchError(
+            f"{filename} does not match ScienceFilePath"
+        )
 
     def _extra_metadata(self) -> dict:
         return {
@@ -352,6 +373,6 @@ def generate_ema_file_path(filename: str) -> EmaFilePath:
     ):
         try:
             return cls.from_filename(filename)
-        except InvalidEmaFileError:
+        except _FilenamePatternMismatchError:
             continue
     raise InvalidEmaFileError(f"{filename} does not match any known EMA convention")
