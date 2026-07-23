@@ -11,11 +11,13 @@ Use
     ema-data-access <command> [<args>]
     ema-data-access --help
     ema-data-access query-ancillary --apid 123 --file-extension csv
+    ema-data-access upload path/to/ema_l1_anc_sc_1234_20240101.csv
 """
 
 import argparse
 import json
 from argparse import ArgumentParser
+from pathlib import Path
 
 import ema_data_access
 
@@ -71,6 +73,32 @@ def add_query_ancillary_args(subparser: ArgumentParser) -> None:
     subparser.set_defaults(func=_query_ancillary_parser)
 
 
+def _upload_parser(args: argparse.Namespace) -> None:
+    """Upload a file to the EMA PDC data archive.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        An object containing the parsed arguments and their values.
+    """
+    ema_data_access.upload(args.file_path)
+    print(f"Uploaded {args.file_path.name}")
+
+
+def add_upload_args(subparser: ArgumentParser) -> None:
+    """Add upload arguments to a subparser.
+
+    Parameters
+    ----------
+    subparser : argparse.ArgumentParser
+        A subparser to add the upload arguments to.
+    """
+    subparser.add_argument(
+        "file_path", type=Path, help="Path to the local file to upload."
+    )
+    subparser.set_defaults(func=_upload_parser)
+
+
 def main():
     """Parse the command line arguments.
 
@@ -90,6 +118,9 @@ def main():
 
     query_ancillary_parser = subparsers.add_parser("query-ancillary")
     add_query_ancillary_args(query_ancillary_parser)
+
+    upload_parser = subparsers.add_parser("upload")
+    add_upload_args(upload_parser)
 
     args = parser.parse_args()
 
