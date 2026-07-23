@@ -2,6 +2,7 @@
 
 import contextlib
 import logging
+from pathlib import Path
 
 import requests
 
@@ -102,3 +103,35 @@ def query_ancillary(  # noqa: PLR0913
         logger.debug("Received JSON: %s", items)
 
     return items
+
+
+def upload(file_path: Path | str) -> None:
+    """Upload a file to the EMA data archive.
+
+    Parameters
+    ----------
+    file_path : pathlib.Path or str
+        Path to the file to upload.
+    """
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(file_path)
+
+    url = f"{_get_base_url()}/upload/{file_path.name}"
+    request = requests.Request(method="POST", url=url).prepare()
+
+    logger.info("Requesting upload URL for %s", file_path.name)
+    with _make_request(request) as response:
+        upload_url = response.json()["upload_url"]
+        logger.debug("Received s3 presigned URL: %s", upload_url)
+
+    put_request = requests.Request(
+        method="PUT",
+        url=upload_url,
+        data=file_path.read_bytes(),
+        headers={"Content-Type": ""},
+    ).prepare()
+
+    logger.info("Uploading %s", file_path.name)
+    with _make_request(put_request):
+        pass
