@@ -134,3 +134,103 @@ def test_query_ancillary_bad_params(mock_send_request):
         ema_data_access.query_ancillary(bad_param="test")
     # Should not have made any calls to send
     assert mock_send_request.call_count == 0
+
+
+@pytest.mark.parametrize("as_str", [False, True], ids=["path", "str"])
+@pytest.mark.parametrize(
+    ("api_key", "expected_header"),
+    [
+        (None, {}),
+        ("test-api-key", {"x-api-key": "test-api-key"}),
+    ],
+)
+def test_upload(  # noqa: PLR0913
+    mock_send_request,
+    tmp_path,
+    monkeypatch,
+    as_str: bool,
+    api_key: str | None,
+    expected_header: dict,
+):
+    """Test the two-step upload flow: POST for a URL, then PUT the file.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    monkeypatch : pytest.fixture
+        Fixture for monkeypatching module/global state.
+    as_str : bool
+        Whether to pass the file path as a ``str`` instead of a ``Path``.
+    api_key : str or None
+        The API key to use for the upload.
+    expected_header : dict
+        The expected auth header on the presign request.
+    """
+    monkeypatch.setitem(ema_data_access.config, "API_KEY", api_key)
+
+    file_path = tmp_path / "ema_l1_anc_sc_1234_20240101.csv"
+    file_path.write_bytes(b"test data")
+
+    mock_presign_response = MagicMock()
+    mock_presign_response.json.return_value = {
+        "upload_url": "https://s3.example.com/presigned"
+    }
+    mock_put_response = MagicMock()
+    mock_send_request.side_effect = [mock_presign_response, mock_put_response]
+
+    ema_data_access.upload(str(file_path) if as_str else file_path)
+
+    assert mock_send_request.call_count == 2
+
+    presign_request = mock_send_request.call_args_list[0][0][0]
+    assert presign_request.method == "POST"
+    assert presign_request.url == (
+        "https://api.test.com/upload/ema_l1_anc_sc_1234_20240101.csv"
+    )
+    assert presign_request.headers == {"Content-Length": "0", **expected_header}
+
+    put_request = mock_send_request.call_args_list[1][0][0]
+    assert put_request.method == "PUT"
+    assert put_request.url == "https://s3.example.com/presigned"
+    assert put_request.body == b"test data"
+    assert put_request.headers["Content-Type"] == ""
+
+
+def test_upload_missing_file(tmp_path):
+    """Test that uploading a nonexistent file raises FileNotFoundError.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    with pytest.raises(FileNotFoundError):
+        ema_data_access.upload(tmp_path / "does_not_exist.csv")
+
+
+def test_upload_request_error(mock_send_request, tmp_path):
+    """Test that a rejected presign request raises EmaDataAccessError.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    file_path = tmp_path / "ema_l1_anc_sc_1234_20240101.csv"
+    file_path.write_bytes(b"test data")
+
+    mock_response = MagicMock()
+    mock_response.status_code = 409
+    mock_response.reason = "Conflict"
+    mock_response.text = "The file already exists."
+    mock_send_request.side_effect = requests.exceptions.HTTPError(
+        response=mock_response
+    )
+
+    with pytest.raises(EmaDataAccessError, match="409 Conflict"):
+        ema_data_access.upload(file_path)

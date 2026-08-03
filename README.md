@@ -27,6 +27,42 @@ Lightweight Python tools to query and access EMA data.
    poetry run pre-commit install
    ```
 
+## Command Line Utility
+
+### Upload a file
+
+Upload a local file to the EMA data archive. The file name must match a
+known EMA naming convention, and requires an API key with developer-level
+access — request one from the EMA PDC team.
+
+```bash
+$ EMA_API_KEY=<your-api-key> ema-data-access --url <url> upload path/to/ema_l1_anc_sc_1234_20240101.csv
+```
+
+or with CLI flags
+
+```bash
+$ ema-data-access --url <url> --api-key <your-api-key> upload path/to/ema_l1_anc_sc_1234_20240101.csv
+```
+
+Under the hood, this requests a presigned upload URL and then PUTs the file
+to it, equivalent to:
+
+```bash
+$ curl -X POST -H "x-api-key: $EMA_API_KEY" <url>/upload/ema_l1_anc_sc_1234_20240101.csv
+# => {"upload_url": "<presigned-url>"}
+$ curl -X PUT -T path/to/ema_l1_anc_sc_1234_20240101.csv "<presigned-url>"
+```
+
+## Importing as a package
+
+```python
+import ema_data_access
+
+ema_data_access.config["API_KEY"] = "<your-api-key>"
+ema_data_access.upload("path/to/ema_l1_anc_sc_1234_20240101.csv")
+```
+
 ## Running tests
 
 ```

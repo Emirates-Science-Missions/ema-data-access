@@ -7,10 +7,11 @@ way to query files in the EMA data archive.
 import importlib.metadata
 import os
 
-from ema_data_access.io import query_ancillary
+from ema_data_access.io import query_ancillary, upload
 
 __all__ = [
     "query_ancillary",
+    "upload",
 ]
 
 __version__ = importlib.metadata.version("ema-data-access")
