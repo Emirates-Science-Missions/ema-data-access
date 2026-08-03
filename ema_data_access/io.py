@@ -114,7 +114,7 @@ def upload(file_path: Path | str) -> None:
         Path to the file to upload.
     """
     file_path = Path(file_path)
-    if not file_path.exists():
+    if not file_path.is_file():
         raise FileNotFoundError(file_path)
 
     url = f"{_get_base_url()}/upload/{file_path.name}"
@@ -123,7 +123,7 @@ def upload(file_path: Path | str) -> None:
     logger.info("Requesting upload URL for %s", file_path.name)
     with _make_request(request) as response:
         upload_url = response.json()["upload_url"]
-        logger.debug("Received s3 presigned URL: %s", upload_url)
+        logger.debug("Received s3 presigned URL")
 
     put_request = requests.Request(
         method="PUT",
