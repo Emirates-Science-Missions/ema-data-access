@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "ema-data-access"
-version = "0.4.0"
+version = "0.5.0"
 description = "EMA Data Access"
 authors = ["EMA PDC Developers"]
 readme = "README.md"
