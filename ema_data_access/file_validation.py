@@ -9,7 +9,6 @@ from typing import ClassVar
 _PAYLOADS = "mst|emb|emc|rpt|ldr"
 _MANIFEST_PAYLOADS = f"moc|{_PAYLOADS}"
 _DATA_LEVELS = "l1|l1a|l1b|l2|l2a|l2b|l3|ql"
-_ROOT = "ema"
 
 
 class InvalidEmaFileError(Exception):
@@ -129,7 +128,7 @@ class AncillaryFilePath(EmaFilePath):
 
     def construct_path(self) -> str:
         """See base class."""
-        return f"{_ROOT}/ancillary/{self.filename}"
+        return f"ancillary/{self.filename}"
 
 
 @dataclass
@@ -155,7 +154,7 @@ class ManifestFilePath(EmaFilePath):
 
     def construct_path(self) -> str:
         """See base class."""
-        return f"{_ROOT}/manifest/{self.payload}/{self.filename}"
+        return f"manifest/{self.payload}/{self.filename}"
 
 
 @dataclass
@@ -181,7 +180,7 @@ class HousekeepingFilePath(EmaFilePath):
 
     def construct_path(self) -> str:
         """See base class."""
-        return f"{_ROOT}/housekeeping/{self.payload}/{self.filename}"
+        return f"housekeeping/{self.payload}/{self.filename}"
 
 
 @dataclass
@@ -275,7 +274,7 @@ class ScienceFilePath(EmaFilePath):
 
     def construct_path(self) -> str:
         """See base class."""
-        return f"{_ROOT}/science/{self.payload}/{self.data_level}/{self.filename}"
+        return f"science/{self.payload}/{self.data_level}/{self.filename}"
 
 
 @dataclass
@@ -301,7 +300,7 @@ class MissionEventsFilePath(EmaFilePath):
 
     def construct_path(self) -> str:
         """See base class."""
-        return f"{_ROOT}/mission_events/{self.filename}"
+        return f"mission_events/{self.filename}"
 
 
 @dataclass
@@ -341,7 +340,7 @@ class SPICEFilePath(EmaFilePath):
 
     def construct_path(self) -> str:
         """See base class."""
-        return f"{_ROOT}/spice/{self.kernel_type}/{self.filename}"
+        return f"spice/{self.kernel_type}/{self.filename}"
 
 
 def generate_ema_file_path(filename: str) -> EmaFilePath:
