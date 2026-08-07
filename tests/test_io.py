@@ -1,6 +1,7 @@
 """Tests for the ``io`` module."""
 
 from unittest.mock import MagicMock
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 import requests
@@ -174,12 +175,13 @@ def test_query_manifest(mock_send_request, query_params: dict):
     mock_send_request.assert_called_once()
     # Assert that the correct URL was used for the query
     sent_request = mock_send_request.call_args[0][0]
-    called_url = sent_request.url
-    str_params = "&".join(f"{k}={v}" for k, v in query_params.items())
-    expected_url_encoded = "https://api.test.com/query_manifest"
-    if str_params:
-        expected_url_encoded += f"?{str_params}"
-    assert called_url == expected_url_encoded
+    called_url = urlparse(sent_request.url)
+    assert f"{called_url.scheme}://{called_url.netloc}{called_url.path}" == (
+        "https://api.test.com/query_manifest"
+    )
+    called_params = parse_qs(called_url.query)
+    expected_params = {k: [str(v)] for k, v in query_params.items()}
+    assert called_params == expected_params
 
 
 def test_query_manifest_bad_params(mock_send_request):
