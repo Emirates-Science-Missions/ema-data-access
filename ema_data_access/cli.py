@@ -11,6 +11,7 @@ Use
     ema-data-access <command> [<args>]
     ema-data-access --help
     ema-data-access query-ancillary --apid 123 --file-extension csv
+    ema-data-access query-manifest --payload emb
     ema-data-access upload path/to/ema_l1_anc_sc_1234_20240101.csv
 """
 
@@ -73,6 +74,53 @@ def add_query_ancillary_args(subparser: ArgumentParser) -> None:
     subparser.set_defaults(func=_query_ancillary_parser)
 
 
+def _query_manifest_parser(args: argparse.Namespace) -> None:
+    """Query the EMA PDC manifest table for files matching the given filters.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        An object containing the parsed arguments and their values.
+    """
+    results = ema_data_access.query_manifest(
+        file_name=args.file_name,
+        payload=args.payload,
+        timetag_start=args.timetag_start,
+        timetag_end=args.timetag_end,
+    )
+    print(json.dumps(results, indent=2))
+
+
+def add_query_manifest_args(subparser: ArgumentParser) -> None:
+    """Add query-manifest arguments to a subparser.
+
+    Parameters
+    ----------
+    subparser : argparse.ArgumentParser
+        A subparser to add the query-manifest arguments to.
+    """
+    subparser.add_argument("--file-name", type=str, help="Exact file name to match.")
+    subparser.add_argument(
+        "--payload",
+        type=str,
+        choices=["mst", "emb", "emc", "rpt", "ldr", "moc"],
+        help="Payload to match. 'moc' matches payload-less MOC manifests.",
+    )
+    subparser.add_argument(
+        "--timetag-start",
+        type=str,
+        help="Only include files with timetag on or after this, in "
+        "YYYYMMDDHHMM format.",
+    )
+    subparser.add_argument(
+        "--timetag-end",
+        type=str,
+        help="Only include files with timetag on or before this, in "
+        "YYYYMMDDHHMM format.",
+    )
+    subparser.set_defaults(func=_query_manifest_parser)
+
+
 def _upload_parser(args: argparse.Namespace) -> None:
     """Upload a file to the EMA PDC data archive.
 
@@ -118,6 +166,9 @@ def main():
 
     query_ancillary_parser = subparsers.add_parser("query-ancillary")
     add_query_ancillary_args(query_ancillary_parser)
+
+    query_manifest_parser = subparsers.add_parser("query-manifest")
+    add_query_manifest_args(query_manifest_parser)
 
     upload_parser = subparsers.add_parser("upload")
     add_upload_args(upload_parser)
