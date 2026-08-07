@@ -105,6 +105,52 @@ def query_ancillary(  # noqa: PLR0913
     return items
 
 
+def query_manifest(
+    *,
+    file_name: str | None = None,
+    payload: str | None = None,
+    timetag_start: str | None = None,
+    timetag_end: str | None = None,
+) -> list[dict]:
+    """Query the manifest table for files matching the given filters.
+
+    Parameters
+    ----------
+    file_name : str, optional
+        Exact file name to match.
+    payload : str, optional
+        Payload to match, one of "mst", "emb", "emc", "rpt", "ldr", "moc".
+    timetag_start : str, optional
+        Only include files with timetag on or after this, in
+        YYYYMMDDHHMM format.
+    timetag_end : str, optional
+        Only include files with timetag on or before this, in
+        YYYYMMDDHHMM format.
+
+    Returns
+    -------
+    list
+        List of rows matching the query, as dicts.
+    """
+    params = {
+        "file_name": file_name,
+        "payload": payload,
+        "timetag_start": timetag_start,
+        "timetag_end": timetag_end,
+    }
+    params = {k: v for k, v in params.items() if v is not None}
+
+    url = f"{_get_base_url()}/query_manifest"
+    request = requests.Request(method="GET", url=url, params=params).prepare()
+
+    logger.info("Querying manifest table with url %s", request.url)
+    with _make_request(request) as response:
+        items = response.json()
+        logger.debug("Received JSON: %s", items)
+
+    return items
+
+
 def upload(file_path: Path | str) -> None:
     """Upload a file to the EMA data archive.
 
