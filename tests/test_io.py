@@ -136,6 +136,66 @@ def test_query_ancillary_bad_params(mock_send_request):
     assert mock_send_request.call_count == 0
 
 
+@pytest.mark.parametrize(
+    "query_params",
+    [
+        # All parameters should send full query
+        {
+            "file_name": "emb_manifest_202402020000.txt",
+            "payload": "emb",
+            "timetag_start": "202401010000",
+            "timetag_end": "202401020000",
+        },
+        # Make sure not all query params are sent if they are missing
+        {"payload": "emb"},
+        # No parameters at all
+        {},
+    ],
+)
+def test_query_manifest(mock_send_request, query_params: dict):
+    """Test a basic call to the manifest Query API.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    query_params : dict
+        Dictionary of key/value pairs that set the query parameters
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = []
+    mock_send_request.return_value = mock_response
+
+    response = ema_data_access.query_manifest(**query_params)
+    # No data found, and JSON decoding works as expected
+    assert response == list()
+
+    # Should have only been one call to send
+    mock_send_request.assert_called_once()
+    # Assert that the correct URL was used for the query
+    sent_request = mock_send_request.call_args[0][0]
+    called_url = sent_request.url
+    str_params = "&".join(f"{k}={v}" for k, v in query_params.items())
+    expected_url_encoded = "https://api.test.com/query_manifest"
+    if str_params:
+        expected_url_encoded += f"?{str_params}"
+    assert called_url == expected_url_encoded
+
+
+def test_query_manifest_bad_params(mock_send_request):
+    """Test a call to query_manifest with an invalid parameter.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.session``
+    """
+    with pytest.raises(TypeError, match="got an unexpected"):
+        ema_data_access.query_manifest(bad_param="test")
+    # Should not have made any calls to send
+    assert mock_send_request.call_count == 0
+
+
 @pytest.mark.parametrize("as_str", [False, True], ids=["path", "str"])
 @pytest.mark.parametrize(
     ("api_key", "expected_header"),
