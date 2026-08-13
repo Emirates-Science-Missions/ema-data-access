@@ -7,10 +7,11 @@ way to query files in the EMA data archive.
 import importlib.metadata
 import os
 
-from ema_data_access.io import query_ancillary, upload
+from ema_data_access.io import query_ancillary, query_manifest, upload
 
 __all__ = [
     "query_ancillary",
+    "query_manifest",
     "upload",
 ]
 
@@ -24,7 +25,7 @@ config = {
 
 DATA_ACCESS_URL : The URL of the EMA data-access API.
 API_KEY : Static API key used to authenticate as a 'team' member. Required
-    to see unreleased files or query the 'manifest' table; get one from
-    scripts/manage_api_keys.py in the ema-pdc repo. Set through the
-    EMA_API_KEY environment variable.
+    to see unreleased files; get one from scripts/manage_api_keys.py in the
+    ema-pdc repo. Set through the EMA_API_KEY environment variable. Not
+    needed to query the 'manifest' table, which is public.
 """

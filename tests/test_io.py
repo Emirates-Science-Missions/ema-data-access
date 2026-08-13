@@ -1,6 +1,7 @@
 """Tests for the ``io`` module."""
 
 from unittest.mock import MagicMock
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 import requests
@@ -132,6 +133,67 @@ def test_query_ancillary_bad_params(mock_send_request):
     """
     with pytest.raises(TypeError, match="got an unexpected"):
         ema_data_access.query_ancillary(bad_param="test")
+    # Should not have made any calls to send
+    assert mock_send_request.call_count == 0
+
+
+@pytest.mark.parametrize(
+    "query_params",
+    [
+        # All parameters should send full query
+        {
+            "file_name": "emb_manifest_202402020000.txt",
+            "payload": "emb",
+            "timetag_start": "202401010000",
+            "timetag_end": "202401020000",
+        },
+        # Make sure not all query params are sent if they are missing
+        {"payload": "emb"},
+        # No parameters at all
+        {},
+    ],
+)
+def test_query_manifest(mock_send_request, query_params: dict):
+    """Test a basic call to the manifest Query API.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    query_params : dict
+        Dictionary of key/value pairs that set the query parameters
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = []
+    mock_send_request.return_value = mock_response
+
+    response = ema_data_access.query_manifest(**query_params)
+    # No data found, and JSON decoding works as expected
+    assert response == list()
+
+    # Should have only been one call to send
+    mock_send_request.assert_called_once()
+    # Assert that the correct URL was used for the query
+    sent_request = mock_send_request.call_args[0][0]
+    called_url = urlparse(sent_request.url)
+    assert f"{called_url.scheme}://{called_url.netloc}{called_url.path}" == (
+        "https://api.test.com/query_manifest"
+    )
+    called_params = parse_qs(called_url.query)
+    expected_params = {k: [str(v)] for k, v in query_params.items()}
+    assert called_params == expected_params
+
+
+def test_query_manifest_bad_params(mock_send_request):
+    """Test a call to query_manifest with an invalid parameter.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.session``
+    """
+    with pytest.raises(TypeError, match="got an unexpected"):
+        ema_data_access.query_manifest(bad_param="test")
     # Should not have made any calls to send
     assert mock_send_request.call_count == 0
 

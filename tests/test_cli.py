@@ -40,3 +40,49 @@ def test_cli_query_ancillary(capsys):
         md5checksum=None,
     )
     assert "test.csv" in capsys.readouterr().out
+
+
+def test_cli_query_manifest(capsys):
+    """Test that 'query-manifest' calls ema_data_access.query_manifest()."""
+    with patch.object(
+        sys,
+        "argv",
+        ["ema-data-access", "query-manifest", "--payload", "emb"],
+    ):
+        with patch.object(
+            ema_data_access,
+            "query_manifest",
+            return_value=[{"file_name": "emb_manifest_202402020000.txt"}],
+        ) as mock_query:
+            main()
+
+    mock_query.assert_called_once_with(
+        file_name=None,
+        payload="emb",
+        timetag_start=None,
+        timetag_end=None,
+    )
+    assert "emb_manifest_202402020000.txt" in capsys.readouterr().out
+
+
+def test_cli_query_manifest_moc(capsys):
+    """Test that 'query-manifest --payload moc' is accepted and forwarded."""
+    with patch.object(
+        sys,
+        "argv",
+        ["ema-data-access", "query-manifest", "--payload", "moc"],
+    ):
+        with patch.object(
+            ema_data_access,
+            "query_manifest",
+            return_value=[{"file_name": "moc_manifest_202401151230.txt"}],
+        ) as mock_query:
+            main()
+
+    mock_query.assert_called_once_with(
+        file_name=None,
+        payload="moc",
+        timetag_start=None,
+        timetag_end=None,
+    )
+    assert "moc_manifest_202401151230.txt" in capsys.readouterr().out

@@ -27,6 +27,23 @@ Lightweight Python tools to query and access EMA data.
    poetry run pre-commit install
    ```
 
+## File naming conventions
+
+Every file in the EMA archive must match one of the naming conventions
+below.
+
+`<payload>` is one of `mst`, `emb`, `emc`, `rpt`, `ldr`. `<data_level>` is one
+of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
+
+| Table | Convention |
+| --- | --- |
+| `ancillary` | `ema_l1_anc_sc_<apid>_<YYYYMMDD>.csv` |
+| `manifest` | `<payload>_manifest_<YYYYMMDDHHMM>.txt`, or `moc_manifest_<YYYYMMDDHHMM>.txt` for a payload-less MOC manifest |
+| `housekeeping` | `ema_l0_hsk_<payload>_<YYYYMMDD>.pkts` |
+| `science` (L0) | `ema_l0_sci_<payload>_<YYYYMMDD>.pkts` |
+| `science` (L1a+) | `ema_<payload>_<data_level>_<YYYYMMDDtHHMMSS>_<descriptor>_<pred_rec>_v<version>[-<subversion>].fits`, where `<pred_rec>` is `p` (predicted) or `r` (reconstructed) |
+| `mission_events` | `ema_mission_events_<start_date:YYYYMMDD>_<end_date:YYYYMMDD>.xml` |
+
 ## Command Line Utility
 
 ### Query the ancillary table
@@ -51,6 +68,27 @@ Under the hood, this is equivalent to:
 
 ```bash
 $ curl -H "x-api-key: $EMA_API_KEY" "<url>/query_ancillary?apid=1234&file_extension=csv"
+```
+
+### Query the manifest table
+
+Query the manifest table for files matching a set of filters. Manifest rows
+are public, so no API key is required.
+
+```bash
+$ ema-data-access --url <url> query-manifest --payload emb
+```
+
+Other available filters: `--file-name`, `--timetag-start`, `--timetag-end`.
+Results are returned as JSON.
+
+`--payload moc` matches MOC manifests, which have no payload of their own
+(`moc_manifest_<YYYYMMDDHHMM>.txt`).
+
+Under the hood, this is equivalent to:
+
+```bash
+$ curl "<url>/query_manifest?payload=emb"
 ```
 
 ### Upload a file
@@ -87,6 +125,8 @@ ema_data_access.config["DATA_ACCESS_URL"] = "<url>"
 ema_data_access.config["API_KEY"] = "<your-api-key>"
 
 results = ema_data_access.query_ancillary(apid=1234, file_extension="csv")
+
+results = ema_data_access.query_manifest(payload="emb")
 
 ema_data_access.upload("path/to/ema_l1_anc_sc_1234_20240101.csv")
 ```
