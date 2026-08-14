@@ -47,6 +47,14 @@ def test_ancillary_file_path_invalid(filename: str):
         AncillaryFilePath.from_filename(filename)
 
 
+def test_ancillary_file_path_versioned():
+    """Test parsing the version suffix the PDC adds once it ingests a file."""
+    parsed = AncillaryFilePath.from_filename("ema_l1_anc_sc_123_20240115_v01.csv")
+
+    assert parsed.apid == 123
+    assert parsed.timetag == datetime(2024, 1, 15, tzinfo=UTC)
+
+
 @pytest.mark.parametrize(
     ("filename", "payload"),
     [
@@ -87,6 +95,14 @@ def test_housekeeping_file_path_invalid_payload():
     """Test that "moc" is not a valid housekeeping payload."""
     with pytest.raises(InvalidEmaFileError):
         HousekeepingFilePath.from_filename("ema_l0_hsk_moc_20240115.pkts")
+
+
+def test_housekeeping_file_path_versioned():
+    """Test parsing the version suffix the PDC adds once it ingests a file."""
+    parsed = HousekeepingFilePath.from_filename("ema_l0_hsk_emb_20240115_v01.pkts")
+
+    assert parsed.payload == "emb"
+    assert parsed.timetag == datetime(2024, 1, 15, tzinfo=UTC)
 
 
 def test_science_file_path_l0():
@@ -137,6 +153,15 @@ def test_science_file_path_invalid():
         ScienceFilePath.from_filename("not_a_science_file.fits")
 
 
+def test_science_file_path_l0_versioned():
+    """Test parsing the version suffix the PDC adds once it ingests a file."""
+    parsed = ScienceFilePath.from_filename("ema_l0_sci_emb_20240115_v01.pkts")
+
+    assert parsed.payload == "emb"
+    assert parsed.data_level == "l0"
+    assert parsed.timetag == datetime(2024, 1, 15, tzinfo=UTC)
+
+
 def test_mission_events_file_path():
     """Test parsing, metadata, and path construction for a mission events file."""
     parsed = MissionEventsFilePath.from_filename(
@@ -148,6 +173,16 @@ def test_mission_events_file_path():
     assert parsed.construct_path() == (
         "mission_events/ema_mission_events_20240101_20240131.xml"
     )
+
+
+def test_mission_events_file_path_versioned():
+    """Test parsing the version suffix the PDC adds once it ingests a file."""
+    parsed = MissionEventsFilePath.from_filename(
+        "ema_mission_events_20240101_20240131_v01.xml"
+    )
+
+    assert parsed.start_date == datetime(2024, 1, 1, tzinfo=UTC)
+    assert parsed.end_date == datetime(2024, 1, 31, tzinfo=UTC)
 
 
 @pytest.mark.parametrize(
