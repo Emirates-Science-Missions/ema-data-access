@@ -407,7 +407,7 @@ class SPICEFilePath(EmaFilePath):
     valid_spice_regexes: ClassVar[tuple[re.Pattern, ...]] = (
         re.compile(spacecraft_ephemeris_pattern),
         re.compile(attitude_pattern),
-        re.compile(body_ephemeris_pattern, re.IGNORECASE),
+        re.compile(body_ephemeris_pattern),
         re.compile(spice_prod_ver_pattern),
         re.compile(single_kernel_pattern),
     )
@@ -437,16 +437,14 @@ class SPICEFilePath(EmaFilePath):
         dict
             `kernel_type`, `file_root`, `start_date`, `end_date`, `version`.
         """
-        for regex in SPICEFilePath.valid_spice_regexes:
-            match = regex.match(filename)
-            if match is not None:
-                try:
+        try:
+            for regex in SPICEFilePath.valid_spice_regexes:
+                if match := regex.fullmatch(filename):
                     return SPICEFilePath._spice_parts_handler(match.groupdict())
-                except ValueError as err:
-                    raise InvalidEmaFileError(
-                        f"{filename} matched a SPICE convention but failed "
-                        f"to parse: {err}"
-                    ) from err
+        except ValueError as err:
+            raise InvalidEmaFileError(
+                f"{filename} matched a SPICE convention but failed to parse: {err}"
+            ) from err
         raise _FilenamePatternMismatchError(f"{filename} does not match SPICEFilePath")
 
     @staticmethod
