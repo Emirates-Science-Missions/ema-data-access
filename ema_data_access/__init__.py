@@ -7,12 +7,13 @@ way to query files in the EMA data archive.
 import importlib.metadata
 import os
 
-from ema_data_access.io import download, query_ancillary, query_manifest, upload
+from ema_data_access.io import download, query_ancillary, query_manifest, query_spice, upload
 
 __all__ = [
     "download",
     "query_ancillary",
     "query_manifest",
+    "query_spice",
     "upload",
 ]
 
