@@ -185,6 +185,187 @@ def test_mission_events_file_path_versioned():
     assert parsed.end_date == datetime(2024, 1, 31, tzinfo=UTC)
 
 
+def test_spice_file_path():
+    """Tests the ``SPICEFilePath`` class."""
+    # Spacecraft ephemeris: predicted/reconstructed/reference
+    file_path = SPICEFilePath("ema_recon_20240101_20240115_v001.bsp")
+    assert file_path.construct_path() == (
+        "spice/spk/ema_recon_20240101_20240115_v001.bsp"
+    )
+
+    # GSINT-224 Asteroid Ephemeris: one file per body
+    file_path = SPICEFilePath("ema_sun_v001.bsp")
+    assert file_path.construct_path() == "spice/spk/ema_sun_v001.bsp"
+
+    # Standard NAIF DE-series Planetary Ephemeris -- no "ema_" prefix
+    file_path = SPICEFilePath("de440.bsp")
+    assert file_path.construct_path() == "spice/spk/de440.bsp"
+
+    # Standard NAIF Mars System Ephemeris
+    file_path = SPICEFilePath("mar097.bsp")
+    assert file_path.construct_path() == "spice/spk/mar097.bsp"
+
+    # Standard NAIF leapseconds / planetary constants conventions
+    file_path = SPICEFilePath("naif0012.tls")
+    assert file_path.construct_path() == "spice/lsk/naif0012.tls"
+    file_path = SPICEFilePath("pck00011.tpc")
+    assert file_path.construct_path() == "spice/pck/pck00011.tpc"
+
+    # EMA spacecraft clock / frames -- "vvv" is descriptive text, not numeric
+    file_path = SPICEFilePath("ema_sclk_2024-final-recalibration.tsc")
+    assert file_path.construct_path() == (
+        "spice/sclk/ema_sclk_2024-final-recalibration.tsc"
+    )
+    file_path = SPICEFilePath("ema_fk_body-frames-v2.tf")
+    assert file_path.construct_path() == "spice/fk/ema_fk_body-frames-v2.tf"
+
+    # Observatory attitude reconstructed/predicted
+    file_path = SPICEFilePath("ema_rck_20240101_20240115_v001.bc")
+    assert file_path.construct_path() == ("spice/ck/ema_rck_20240101_20240115_v001.bc")
+    file_path = SPICEFilePath("ema_pck_20240101_20240115_v001.bc")
+    assert file_path.construct_path() == ("spice/ck/ema_pck_20240101_20240115_v001.bc")
+
+    # Test a filename matching no known convention
+    with pytest.raises(InvalidEmaFileError):
+        SPICEFilePath("test.txt")
+
+@pytest.mark.parametrize(
+    ("type_token", "kernel_type"),
+    [
+        ("pred", "ephem_predicted"),
+        ("recon", "ephem_reconstructed"),
+        ("ref", "ephem_reference"),
+    ],
+)
+def test_spice_extract_spacecraft_ephemeris_parts(type_token, kernel_type):
+    """Test the predicted/reconstructed/reference ephemeris conventions."""
+    file_path = SPICEFilePath(f"ema_{type_token}_20240101_20240115_v001.bsp")
+    expected_file_root = f"ema_{type_token}_20240101_20240115"
+    assert file_path.spice_metadata["version"] == "v001"
+    assert file_path.spice_metadata["kernel_type"] == kernel_type
+    assert file_path.spice_metadata["file_root"] == expected_file_root
+    assert file_path.spice_metadata["start_date"] == datetime(2024, 1, 1, tzinfo=UTC)
+    assert file_path.spice_metadata["end_date"] == datetime(2024, 1, 15, tzinfo=UTC)
+    assert len(file_path.spice_metadata) == 5
+
+
+@pytest.mark.parametrize(
+    ("body", "kernel_type"),
+    [
+        ("sun", "ephem_sun"),
+        ("venus", "ephem_venus"),
+        ("earth", "ephem_earth"),
+        ("mars", "ephem_mars"),
+        ("wes", "ephem_wes"),
+        ("chi", "ephem_chi"),
+        ("roc", "ephem_roc"),
+        ("va28", "ephem_va28"),
+        ("rc76", "ephem_rc76"),
+        ("sg6", "ephem_sg6"),
+        ("jus", "ephem_jus"),
+    ],
+)
+def test_spice_extract_body_ephemeris_parts(body, kernel_type):
+    """Test the GSINT-224 (Asteroid Ephemeris) per-body convention."""
+    file_path = SPICEFilePath(f"ema_{body}_v001.bsp")
+    assert file_path.spice_metadata["version"] == "v001"
+    assert file_path.spice_metadata["kernel_type"] == kernel_type
+    assert file_path.spice_metadata["file_root"] == f"ema_{body}"
+    assert file_path.spice_metadata["start_date"] is None
+    assert file_path.spice_metadata["end_date"] is None
+    assert len(file_path.spice_metadata) == 5
+
+
+def test_spice_extract_planetary_ephemeris_parts():
+    """Test the standard NAIF DE-series Planetary Ephemeris convention."""
+    file_path = SPICEFilePath("de440.bsp")
+    assert file_path.spice_metadata["version"] == "440"
+    assert file_path.spice_metadata["kernel_type"] == "ephem_planetary"
+    assert file_path.spice_metadata["file_root"] == "de"
+    assert file_path.spice_metadata["start_date"] is None
+    assert file_path.spice_metadata["end_date"] is None
+    assert len(file_path.spice_metadata) == 5
+
+
+def test_spice_extract_mars_system_ephemeris_parts():
+    """Test the standard NAIF Mars System Ephemeris convention."""
+    file_path = SPICEFilePath("mar097.bsp")
+    assert file_path.spice_metadata["version"] == "097"
+    assert file_path.spice_metadata["kernel_type"] == "ephem_mars_system"
+    assert file_path.spice_metadata["file_root"] == "mar"
+    assert file_path.spice_metadata["start_date"] is None
+    assert file_path.spice_metadata["end_date"] is None
+    assert len(file_path.spice_metadata) == 5
+
+
+def test_spice_extract_leapsecond_parts():
+    """Test the standard NAIF leapseconds convention."""
+    file_path = SPICEFilePath("naif0012.tls")
+    assert file_path.spice_metadata["version"] == "0012"
+    assert file_path.spice_metadata["kernel_type"] == "leapseconds"
+    assert file_path.spice_metadata["file_root"] == "naif"
+    assert file_path.spice_metadata["start_date"] is None
+    assert file_path.spice_metadata["end_date"] is None
+    assert len(file_path.spice_metadata) == 5
+
+
+def test_spice_extract_planetary_constants_parts():
+    """Test the standard NAIF planetary constants convention."""
+    file_path = SPICEFilePath("pck00011.tpc")
+    assert file_path.spice_metadata["version"] == "00011"
+    assert file_path.spice_metadata["kernel_type"] == "planetary_constants"
+    assert file_path.spice_metadata["file_root"] == "pck"
+    assert file_path.spice_metadata["start_date"] is None
+    assert file_path.spice_metadata["end_date"] is None
+    assert len(file_path.spice_metadata) == 5
+
+
+def test_spice_extract_spacecraft_clock_parts():
+    """Vvv is a variable-length descriptive string here."""
+    file_path = SPICEFilePath("ema_sclk_2024-final-recalibration.tsc")
+    assert file_path.spice_metadata["version"] == "2024-final-recalibration"
+    assert file_path.spice_metadata["kernel_type"] == "spacecraft_clock"
+    assert file_path.spice_metadata["file_root"] == "ema_sclk"
+    assert file_path.spice_metadata["start_date"] is None
+    assert file_path.spice_metadata["end_date"] is None
+    assert len(file_path.spice_metadata) == 5
+
+
+def test_spice_extract_frames_parts():
+    """Vvv is a variable-length descriptive string."""
+    file_path = SPICEFilePath("ema_fk_body-frames-v2.tf")
+    assert file_path.spice_metadata["version"] == "body-frames-v2"
+    assert file_path.spice_metadata["kernel_type"] == "frames"
+    assert file_path.spice_metadata["file_root"] == "ema_fk"
+    assert file_path.spice_metadata["start_date"] is None
+    assert file_path.spice_metadata["end_date"] is None
+    assert len(file_path.spice_metadata) == 5
+
+
+def test_spice_extract_attitude_reconstructed_parts():
+    """Test the observatory attitude reconstructed convention."""
+    file_path = SPICEFilePath("ema_rck_20240101_20240115_v001.bc")
+    assert file_path.spice_metadata["version"] == "v001"
+    assert file_path.spice_metadata["kernel_type"] == "attitude_reconstructed"
+    assert file_path.spice_metadata["file_root"] == "ema_rck_20240101_20240115"
+    assert file_path.spice_metadata["start_date"] == datetime(2024, 1, 1, tzinfo=UTC)
+    assert file_path.spice_metadata["end_date"] == datetime(2024, 1, 15, tzinfo=UTC)
+    assert len(file_path.spice_metadata) == 5
+
+
+def test_spice_extract_attitude_predicted_parts():
+    """Test the observatory attitude predicted convention."""
+    file_path = SPICEFilePath("ema_pck_20240101_20240115_v001.bc")
+    assert file_path.spice_metadata["version"] == "v001"
+    assert file_path.spice_metadata["kernel_type"] == "attitude_predicted"
+    assert file_path.spice_metadata["file_root"] == "ema_pck_20240101_20240115"
+    assert file_path.spice_metadata["start_date"] == datetime(2024, 1, 1, tzinfo=UTC)
+    assert file_path.spice_metadata["end_date"] == datetime(2024, 1, 15, tzinfo=UTC)
+    assert len(file_path.spice_metadata) == 5
+
+    planetary_constants = SPICEFilePath("pck00011.tpc")
+    assert planetary_constants.spice_metadata["kernel_type"] == "planetary_constants"
+
 @pytest.mark.parametrize(
     ("filename", "file_root", "kernel_type"),
     [
