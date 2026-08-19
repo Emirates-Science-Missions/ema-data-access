@@ -397,9 +397,9 @@ class SPICEFilePath(EmaFilePath):
         r"ema_(?P<type>sun|venus|earth|mars|wes|chi|roc|va28|rc76|sg6|jus)_"
         r"(?P<version>[a-zA-Z0-9\-]+)\.bsp"
     )
-    spice_prod_ver_pattern = (
-        r"(?P<type>de|mar|naif|pck)(?P<version>\d+)\.(?:bsp|tls|tpc)"
-    )
+    planetary_ephemeris_pattern = r"(?P<type>de|mar)(?P<version>\d+)\.bsp"
+    leapseconds_pattern = r"(?P<type>naif)(?P<version>\d+)\.tls"
+    planetary_constants_pattern = r"(?P<type>pck)(?P<version>\d+)\.(?:tpc|bpc)"
     single_kernel_pattern = (
         r"ema_(?P<type>sclk|fk)_(?P<version>[a-zA-Z0-9\-]+)\.(?:tsc|tf)"
     )
@@ -408,7 +408,9 @@ class SPICEFilePath(EmaFilePath):
         re.compile(spacecraft_ephemeris_pattern),
         re.compile(attitude_pattern),
         re.compile(body_ephemeris_pattern),
-        re.compile(spice_prod_ver_pattern),
+        re.compile(planetary_ephemeris_pattern),
+        re.compile(leapseconds_pattern),
+        re.compile(planetary_constants_pattern),
         re.compile(single_kernel_pattern),
     )
 
@@ -422,6 +424,22 @@ class SPICEFilePath(EmaFilePath):
         """
         self.filename = filename
         self.spice_metadata = SPICEFilePath.extract_filename_components(self.filename)
+
+    @classmethod
+    def from_filename(cls, filename: str) -> "SPICEFilePath":
+        """Parse `filename`, raising InvalidEmaFileError if it doesn't match.
+
+        Parameters
+        ----------
+        filename : str
+            The file name to validate and parse.
+
+        Returns
+        -------
+        SPICEFilePath
+            The parsed representation of `filename`.
+        """
+        return cls(filename)
 
     @staticmethod
     def extract_filename_components(filename: str) -> dict:
@@ -548,7 +566,7 @@ def generate_ema_file_path(filename: str) -> EmaFilePath:
         ScienceFilePath.from_filename,
         MissionEventsFilePath.from_filename,
         ManifestFilePath.from_filename,
-        SPICEFilePath,  # no from_filename -- constructed directly instead
+        SPICEFilePath.from_filename,
     ):
         try:
             return construct(filename)

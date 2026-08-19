@@ -320,6 +320,38 @@ def test_spice_extract_planetary_constants_parts():
     assert len(file_path.spice_metadata) == 5
 
 
+def test_spice_extract_binary_planetary_constants_parts():
+    """Test the NAIF binary PCK (.bpc) planetary constants convention."""
+    file_path = SPICEFilePath("pck00011.bpc")
+    assert file_path.spice_metadata["version"] == "00011"
+    assert file_path.spice_metadata["kernel_type"] == "planetary_constants"
+    assert file_path.spice_metadata["file_root"] == "pck"
+    assert len(file_path.spice_metadata) == 5
+    assert file_path.construct_path() == "spice/pck/pck00011.bpc"
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "naif0012.bsp",  # leapseconds prefix with an ephemeris extension
+        "de440.tls",  # planetary ephemeris prefix with a leapseconds extension
+        "pck00011.bsp",  # planetary constants prefix with an ephemeris extension
+        "mar097.tpc",  # mars system ephemeris prefix with a constants extension
+    ],
+)
+def test_spice_rejects_mismatched_type_extension_combos(filename):
+    """A kernel prefix must only match its own convention's extension(s)."""
+    with pytest.raises(InvalidEmaFileError):
+        SPICEFilePath(filename)
+
+
+def test_spice_file_path_from_filename():
+    """SPICEFilePath.from_filename() must delegate to the constructor."""
+    file_path = SPICEFilePath.from_filename("naif0012.tls")
+    assert isinstance(file_path, SPICEFilePath)
+    assert file_path.spice_metadata["kernel_type"] == "leapseconds"
+
+
 def test_spice_extract_spacecraft_clock_parts():
     """Vvv is a variable-length descriptive string here."""
     file_path = SPICEFilePath("ema_sclk_2024-final-recalibration.tsc")
