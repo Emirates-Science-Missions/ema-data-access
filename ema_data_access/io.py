@@ -72,7 +72,7 @@ def query_ancillary(  # noqa: PLR0913
     timetag_end : str, optional
         Only include files with timetag on or before this, in YYYYMMDD format.
     file_extension : str, optional
-        File extension to match, one of "csv", "fits", "pkts".
+        File extension to match, one of "csv", "fits", "cdf", "pkts".
     version : int, optional
         File version to match.
     md5checksum : str, optional
@@ -98,6 +98,180 @@ def query_ancillary(  # noqa: PLR0913
     request = requests.Request(method="GET", url=url, params=params).prepare()
 
     logger.info("Querying ancillary table with url %s", request.url)
+    with _make_request(request) as response:
+        items = response.json()
+        logger.debug("Received JSON: %s", items)
+
+    return items
+
+
+def query_housekeeping(  # noqa: PLR0913
+    *,
+    file_name: str | None = None,
+    payload: str | None = None,
+    timetag_start: str | None = None,
+    timetag_end: str | None = None,
+    version: int | None = None,
+    md5checksum: str | None = None,
+) -> list[dict]:
+    """Query the housekeeping table for files matching the given filters.
+
+    Parameters
+    ----------
+    file_name : str, optional
+        Exact file name to match.
+    payload : str, optional
+        Payload to match, one of "mst", "emb", "emc", "rpt", "ldr".
+    timetag_start : str, optional
+        Only include files with timetag on or after this, in YYYYMMDD format.
+    timetag_end : str, optional
+        Only include files with timetag on or before this, in YYYYMMDD format.
+    version : int, optional
+        File version to match.
+    md5checksum : str, optional
+        MD5 checksum to match.
+
+    Returns
+    -------
+    list
+        List of rows matching the query, as dicts.
+    """
+    params = {
+        "file_name": file_name,
+        "payload": payload,
+        "timetag_start": timetag_start,
+        "timetag_end": timetag_end,
+        "version": version,
+        "md5checksum": md5checksum,
+    }
+    params = {k: v for k, v in params.items() if v is not None}
+
+    url = f"{_get_base_url()}/query_housekeeping"
+    request = requests.Request(method="GET", url=url, params=params).prepare()
+
+    logger.info("Querying housekeeping table with url %s", request.url)
+    with _make_request(request) as response:
+        items = response.json()
+        logger.debug("Received JSON: %s", items)
+
+    return items
+
+
+def query_science(  # noqa: PLR0913
+    *,
+    file_name: str | None = None,
+    payload: str | None = None,
+    data_level: str | None = None,
+    timetag_start: str | None = None,
+    timetag_end: str | None = None,
+    descriptor: str | None = None,
+    pred_rec: str | None = None,
+    file_extension: str | None = None,
+    version: int | None = None,
+    md5checksum: str | None = None,
+) -> list[dict]:
+    """Query the science table for files matching the given filters.
+
+    Parameters
+    ----------
+    file_name : str, optional
+        Exact file name to match.
+    payload : str, optional
+        Payload to match, one of "mst", "emb", "emc", "rpt", "ldr".
+    data_level : str, optional
+        Data level to match, one of "l0", "l1", "l1a", "l1b", "l2", "l2a",
+        "l2b", "l3", "ql".
+    timetag_start : str, optional
+        Only include files with timetag on or after this, in YYYYMMDD format.
+    timetag_end : str, optional
+        Only include files with timetag on or before this, in YYYYMMDD format.
+    descriptor : str, optional
+        Descriptor to match.
+    pred_rec : str, optional
+        Predicted/reconstructed flag to match, "p" or "r".
+    file_extension : str, optional
+        File extension to match, one of "csv", "fits", "cdf", "pkts".
+    version : int, optional
+        File version to match.
+    md5checksum : str, optional
+        MD5 checksum to match.
+
+    Returns
+    -------
+    list
+        List of rows matching the query, as dicts.
+    """
+    params = {
+        "file_name": file_name,
+        "payload": payload,
+        "data_level": data_level,
+        "timetag_start": timetag_start,
+        "timetag_end": timetag_end,
+        "descriptor": descriptor,
+        "pred_rec": pred_rec,
+        "file_extension": file_extension,
+        "version": version,
+        "md5checksum": md5checksum,
+    }
+    params = {k: v for k, v in params.items() if v is not None}
+
+    url = f"{_get_base_url()}/query_science"
+    request = requests.Request(method="GET", url=url, params=params).prepare()
+
+    logger.info("Querying science table with url %s", request.url)
+    with _make_request(request) as response:
+        items = response.json()
+        logger.debug("Received JSON: %s", items)
+
+    return items
+
+
+def query_mission_events(
+    *,
+    file_name: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    version: int | None = None,
+    md5checksum: str | None = None,
+) -> list[dict]:
+    """Query the mission_events table for files matching the given filters.
+
+    Events span a date range, so start_date and end_date define a query
+    window and any event whose own range overlaps that window is returned.
+
+    Parameters
+    ----------
+    file_name : str, optional
+        Exact file name to match.
+    start_date : str, optional
+        Start of the query window, in YYYYMMDD format. Only include events
+        that end on or after this.
+    end_date : str, optional
+        End of the query window, in YYYYMMDD format. Only include events
+        that start on or before this.
+    version : int, optional
+        File version to match.
+    md5checksum : str, optional
+        MD5 checksum to match.
+
+    Returns
+    -------
+    list
+        List of rows matching the query, as dicts.
+    """
+    params = {
+        "file_name": file_name,
+        "start_date": start_date,
+        "end_date": end_date,
+        "version": version,
+        "md5checksum": md5checksum,
+    }
+    params = {k: v for k, v in params.items() if v is not None}
+
+    url = f"{_get_base_url()}/query_mission_events"
+    request = requests.Request(method="GET", url=url, params=params).prepare()
+
+    logger.info("Querying mission_events table with url %s", request.url)
     with _make_request(request) as response:
         items = response.json()
         logger.debug("Received JSON: %s", items)
