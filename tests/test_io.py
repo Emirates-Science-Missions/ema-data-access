@@ -374,6 +374,49 @@ def test_download_request_error(mock_send_request, tmp_path):
         )
 
 
+@pytest.mark.parametrize(
+    "file_name",
+    ["../../etc/passwd", "foo/bar.csv", "..", ".", "", "/etc/passwd"],
+)
+def test_download_rejects_non_bare_file_name(mock_send_request, tmp_path, file_name):
+    """Test that download rejects file names containing path components.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    file_name : str
+        Non-bare file name that should be rejected.
+    """
+    with pytest.raises(ValueError, match="bare file name"):
+        ema_data_access.download(file_name, destination=tmp_path)
+
+    mock_send_request.assert_not_called()
+
+
+def test_download_url_encodes_file_name(mock_send_request, tmp_path):
+    """Test that special characters in the file name are URL-encoded.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    file_name = "ema_l1_anc_sc_1234_20240101 (copy)#1.csv"
+
+    ema_data_access.download(file_name, destination=tmp_path)
+
+    sent_request = mock_send_request.call_args[0][0]
+    assert (
+        sent_request.url == "https://api.test.com/download/"
+        "ema_l1_anc_sc_1234_20240101%20%28copy%29%231.csv"
+    )
+
+
 def test_upload_missing_file(tmp_path):
     """Test that uploading a nonexistent file raises FileNotFoundError.
 

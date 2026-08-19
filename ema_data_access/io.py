@@ -3,6 +3,7 @@
 import contextlib
 import logging
 from pathlib import Path
+from urllib.parse import quote
 
 import requests
 
@@ -167,7 +168,16 @@ def download(file_name: str, destination: Path | str | None = None) -> Path:
     -------
     pathlib.Path
         Path to the downloaded file.
+
+    Raises
+    ------
+    ValueError
+        If `file_name` is not a bare file name (e.g. contains path
+        separators or `..`).
     """
+    if file_name in ("", ".", "..") or Path(file_name).name != file_name:
+        raise ValueError(f"file_name must be a bare file name, got {file_name!r}")
+
     destination = Path(destination) if destination is not None else Path(file_name)
     if destination.is_dir():
         destination = destination / file_name
@@ -178,7 +188,7 @@ def download(file_name: str, destination: Path | str | None = None) -> Path:
         )
         return destination
 
-    url = f"{_get_base_url()}/download/{file_name}"
+    url = f"{_get_base_url()}/download/{quote(file_name)}"
     request = requests.Request(method="GET", url=url).prepare()
 
     logger.info("Downloading %s", file_name)
