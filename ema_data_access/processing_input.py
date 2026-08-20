@@ -12,10 +12,13 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from typing import ClassVar
 
 from ema_data_access.file_validation import EmaFilePath, SPICEFilePath
+from ema_data_access.io import download
 
 
 class ProcessingInputType(Enum):
@@ -52,8 +55,9 @@ class ProcessingInput(ABC):
         The type of data, e.g. instrument data level, "ancillary", or
         "spice". Used to serialize() output and to query by data type.
     descriptor : str
-        A descriptor for the file. SPICE files use "historical", since
-        EMA's SPICE naming doesn't yet distinguish predicted files.
+        A descriptor for the file. SPICE files use "historical" for
+        reconstructed/definitive kernels, or "best" for predicted/reference
+        kernels (used when a reconstructed kernel isn't available yet).
     """
 
     filename_list: list[str] = None
@@ -136,29 +140,58 @@ class SPICEInput(ProcessingInput):
     input_type = ProcessingInputType.SPICE_FILE
     descriptor = "historical"
 
+    # kernel_type values (see SPICEFilePath.spice_metadata) that are a
+    # best-effort stand-in for a reconstructed kernel, used when the
+    # definitive reconstructed kernel isn't available yet.
+    _BEST_EFFORT_KERNEL_TYPES: ClassVar[frozenset[str]] = frozenset(
+        {"ephem_predicted", "ephem_reference", "attitude_predicted"}
+    )
+
     def _set_attributes_from_filenames(self) -> None:
-        """Set the source and file object attributes based on the filenames."""
+        """Set the source, descriptor, and file object attributes."""
         source = []
         file_obj_list = []
 
         for file in self.filename_list:
             path_validator = SPICEFilePath.from_filename(file)
-            if path_validator.kernel_type not in source:
-                source.append(path_validator.kernel_type)
+            kernel_type = path_validator.spice_metadata["kernel_type"]
+            if kernel_type not in source:
+                source.append(kernel_type)
             file_obj_list.append(path_validator)
+
+            if kernel_type in self._BEST_EFFORT_KERNEL_TYPES:
+                self.descriptor = "best"
 
         self.source = source
         self.data_type = ProcessingInputType.SPICE_FILE.value
         self.ema_file_paths = file_obj_list
 
-    def get_time_range(self):
-        """Not yet complete.
+    def get_time_range(self) -> tuple[datetime | None, datetime | None]:
+        """Return the time range covered by the files.
 
-        EMA's SPICE file naming doesn't currently carry a time range (see
-        the "TODO: update pattern when determined" note on
-        `SPICEFilePath`), so there is nothing to compute here yet.
+        Only date-ranged kernel types (spacecraft ephemeris and attitude
+        kernels) carry a `start_date`/`end_date` at all; single-current-file
+        kernel types (leapseconds, planetary constants, frames, spacecraft
+        clock, body/planetary ephemerides) have none and are skipped here.
+
+        Returns
+        -------
+        (start_time, end_time) : tuple[datetime | None, datetime | None]
+            The earliest start_date and latest end_date among the files
+            that have one, or (None, None) if none of them do.
         """
-        pass
+        start_time = None
+        end_time = None
+        for file_obj in self.ema_file_paths:
+            file_start = file_obj.spice_metadata["start_date"]
+            file_end = file_obj.spice_metadata["end_date"]
+            if file_start is None or file_end is None:
+                continue
+            if start_time is None or file_start < start_time:
+                start_time = file_start
+            if end_time is None or file_end > end_time:
+                end_time = file_end
+        return start_time, end_time
 
 
 @dataclass
@@ -315,3 +348,8 @@ class ProcessingInputCollection:
             )
 
         return out
+
+    def download_all_files(self) -> None:
+        """Download all the dependency files in the collection."""
+        for path in self.get_file_paths():
+            download(path.name)
