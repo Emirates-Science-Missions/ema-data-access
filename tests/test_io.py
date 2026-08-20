@@ -261,6 +261,162 @@ def test_upload(  # noqa: PLR0913
     assert put_request.headers["Content-Type"] == ""
 
 
+@pytest.mark.parametrize("as_str", [False, True], ids=["path", "str"])
+def test_download(mock_send_request, tmp_path, as_str: bool):
+    """Test downloading a file writes the response content to disk.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    as_str : bool
+        Whether to pass the destination as a ``str`` instead of a ``Path``.
+    """
+    file_name = "ema_l1_anc_sc_1234_20240101.csv"
+    destination = tmp_path / file_name
+
+    result = ema_data_access.download(
+        file_name, destination=str(destination) if as_str else destination
+    )
+
+    assert result == destination
+    assert destination.read_bytes() == b"Mock file content"
+
+    mock_send_request.assert_called_once()
+    sent_request = mock_send_request.call_args[0][0]
+    assert sent_request.method == "GET"
+    assert sent_request.url == f"https://api.test.com/download/{file_name}"
+
+
+def test_download_default_destination(mock_send_request, tmp_path, monkeypatch):
+    """Test that download defaults to saving `file_name` in the cwd.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    monkeypatch : pytest.fixture
+        Fixture for monkeypatching module/global state.
+    """
+    monkeypatch.chdir(tmp_path)
+    file_name = "ema_l1_anc_sc_1234_20240101.csv"
+
+    result = ema_data_access.download(file_name)
+
+    assert result.resolve() == tmp_path / file_name
+    assert result.read_bytes() == b"Mock file content"
+
+
+def test_download_to_directory(mock_send_request, tmp_path):
+    """Test that passing a directory as the destination saves inside it.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    file_name = "ema_l1_anc_sc_1234_20240101.csv"
+
+    result = ema_data_access.download(file_name, destination=tmp_path)
+
+    assert result == tmp_path / file_name
+    assert result.read_bytes() == b"Mock file content"
+
+
+def test_download_already_exists(mock_send_request, tmp_path):
+    """Test that download skips the request if the file already exists.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    file_name = "ema_l1_anc_sc_1234_20240101.csv"
+    destination = tmp_path / file_name
+    destination.write_bytes(b"already here")
+
+    result = ema_data_access.download(file_name, destination=destination)
+
+    assert result == destination
+    assert destination.read_bytes() == b"already here"
+    mock_send_request.assert_not_called()
+
+
+def test_download_request_error(mock_send_request, tmp_path):
+    """Test that a rejected download request raises EmaDataAccessError.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+    mock_response.reason = "Not Found"
+    mock_response.text = "The requested resource was not found."
+    mock_send_request.side_effect = requests.exceptions.HTTPError(
+        response=mock_response
+    )
+
+    with pytest.raises(EmaDataAccessError, match="404 Not Found"):
+        ema_data_access.download(
+            "ema_l1_anc_sc_1234_20240101.csv", destination=tmp_path
+        )
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    ["../../etc/passwd", "foo/bar.csv", "..", ".", "", "/etc/passwd"],
+)
+def test_download_rejects_non_bare_file_name(mock_send_request, tmp_path, file_name):
+    """Test that download rejects file names containing path components.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    file_name : str
+        Non-bare file name that should be rejected.
+    """
+    with pytest.raises(ValueError, match="bare file name"):
+        ema_data_access.download(file_name, destination=tmp_path)
+
+    mock_send_request.assert_not_called()
+
+
+def test_download_url_encodes_file_name(mock_send_request, tmp_path):
+    """Test that special characters in the file name are URL-encoded.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    file_name = "ema_l1_anc_sc_1234_20240101 (copy)#1.csv"
+
+    ema_data_access.download(file_name, destination=tmp_path)
+
+    sent_request = mock_send_request.call_args[0][0]
+    assert (
+        sent_request.url == "https://api.test.com/download/"
+        "ema_l1_anc_sc_1234_20240101%20%28copy%29%231.csv"
+    )
+
+
 def test_upload_missing_file(tmp_path):
     """Test that uploading a nonexistent file raises FileNotFoundError.
 
