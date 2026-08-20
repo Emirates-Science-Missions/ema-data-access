@@ -70,6 +70,64 @@ Under the hood, this is equivalent to:
 $ curl -H "x-api-key: $EMA_API_KEY" "<url>/query_ancillary?apid=1234&file_extension=csv"
 ```
 
+### Query the housekeeping table
+
+Query the housekeeping table for files matching a set of filters. An API key
+is optional. Without one, only `released` files are returned.
+
+```bash
+$ EMA_API_KEY=<your-api-key> ema-data-access --url <url> query-housekeeping --payload mst
+```
+
+Other available filters: `--file-name`, `--timetag-start`, `--timetag-end`,
+`--version`, `--md5checksum`. Results are returned as JSON.
+
+Under the hood, this is equivalent to:
+
+```bash
+$ curl -H "x-api-key: $EMA_API_KEY" "<url>/query_housekeeping?payload=mst"
+```
+
+### Query the science table
+
+Query the science table for files matching a set of filters. An API key is
+optional. Without one, only `released` files are returned.
+
+```bash
+$ EMA_API_KEY=<your-api-key> ema-data-access --url <url> query-science --payload emb --data-level l1a
+```
+
+Other available filters: `--file-name`, `--timetag-start`, `--timetag-end`,
+`--descriptor`, `--pred-rec`, `--file-extension`, `--version`,
+`--md5checksum`. Results are returned as JSON.
+
+Under the hood, this is equivalent to:
+
+```bash
+$ curl -H "x-api-key: $EMA_API_KEY" "<url>/query_science?payload=emb&data_level=l1a"
+```
+
+### Query the mission events table
+
+Query the mission_events table for event files matching a set of filters. An
+API key is optional. Without one, only `released` files are returned.
+
+Events span a date range, so `--start-date` and `--end-date` define a query
+window and any event whose own range overlaps that window is returned.
+
+```bash
+$ EMA_API_KEY=<your-api-key> ema-data-access --url <url> query-mission-events --start-date 20240101 --end-date 20240110
+```
+
+Other available filters: `--file-name`, `--version`, `--md5checksum`.
+Results are returned as JSON.
+
+Under the hood, this is equivalent to:
+
+```bash
+$ curl -H "x-api-key: $EMA_API_KEY" "<url>/query_mission_events?start_date=20240101&end_date=20240110"
+```
+
 ### Query the manifest table
 
 Query the manifest table for files matching a set of filters. Manifest rows
@@ -125,6 +183,14 @@ ema_data_access.config["DATA_ACCESS_URL"] = "<url>"
 ema_data_access.config["API_KEY"] = "<your-api-key>"
 
 results = ema_data_access.query_ancillary(apid=1234, file_extension="csv")
+
+results = ema_data_access.query_housekeeping(payload="mst")
+
+results = ema_data_access.query_science(payload="emb", data_level="l1a")
+
+results = ema_data_access.query_mission_events(
+    start_date="20240101", end_date="20240110"
+)
 
 results = ema_data_access.query_manifest(payload="emb")
 
