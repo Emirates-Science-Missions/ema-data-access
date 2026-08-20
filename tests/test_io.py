@@ -7,7 +7,11 @@ import pytest
 import requests
 
 import ema_data_access
-from ema_data_access.io import EmaDataAccessError, _get_base_url
+from ema_data_access.io import (
+    EmaDataAccessError,
+    _get_base_url,
+    _normalize_date_param,
+)
 
 
 def test_base_url(monkeypatch):
@@ -336,8 +340,8 @@ def test_query_mission_events_bad_params(mock_send_request):
         {
             "file_name": "emb_manifest_202402020000.txt",
             "payload": "emb",
-            "timetag_start": "202401010000",
-            "timetag_end": "202401020000",
+            "timetag_start": "2024-01-01T00:00:00",
+            "timetag_end": "2024-01-02T00:00:00",
         },
         # Make sure not all query params are sent if they are missing
         {"payload": "emb"},
@@ -374,6 +378,67 @@ def test_query_manifest(mock_send_request, query_params: dict):
     called_params = parse_qs(called_url.query)
     expected_params = {k: [str(v)] for k, v in query_params.items()}
     assert called_params == expected_params
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("20240101", "2024-01-01"),
+        ("202401011230", "2024-01-01T12:30:00"),
+        ("2024-01-01", "2024-01-01"),
+        ("2024-01-01T12:30:00", "2024-01-01T12:30:00"),
+        (None, None),
+    ],
+)
+def test_normalize_date_param(value: str | None, expected: str | None):
+    """Test compact date conversion and dashed/None pass-through.
+
+    Parameters
+    ----------
+    value : str or None
+        The date filter value as a caller would give it.
+    expected : str or None
+        The value that should be sent to the API.
+    """
+    assert _normalize_date_param(value) == expected
+
+
+@pytest.mark.parametrize("value", ["20241301", "202401011261", "1234567890", "0"])
+def test_normalize_date_param_invalid(value: str):
+    """Test that invalid or ambiguous digit strings raise a clear error.
+
+    Bare digit strings would otherwise be parsed by the API as Unix epoch
+    seconds and silently filter against the wrong dates.
+
+    Parameters
+    ----------
+    value : str
+        An invalid or ambiguous date filter value.
+    """
+    with pytest.raises(EmaDataAccessError, match="date"):
+        _normalize_date_param(value)
+
+
+def test_query_compact_dates_sent_dashed(mock_send_request):
+    """Test that YYYYMMDD filter values reach the API as YYYY-MM-DD.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = []
+    mock_send_request.return_value = mock_response
+
+    ema_data_access.query_housekeeping(timetag_start="20240101", timetag_end="20240102")
+
+    sent_request = mock_send_request.call_args[0][0]
+    called_params = parse_qs(urlparse(sent_request.url).query)
+    assert called_params == {
+        "timetag_start": ["2024-01-01"],
+        "timetag_end": ["2024-01-02"],
+    }
 
 
 def test_query_manifest_bad_params(mock_send_request):

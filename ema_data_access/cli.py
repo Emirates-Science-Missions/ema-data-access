@@ -59,12 +59,14 @@ def add_query_ancillary_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--timetag-start",
         type=str,
-        help="Only include files with timetag on or after this, in YYYYMMDD format.",
+        help="Only include files with timetag on or after this, in YYYYMMDD "
+        "or YYYY-MM-DD format.",
     )
     subparser.add_argument(
         "--timetag-end",
         type=str,
-        help="Only include files with timetag on or before this, in YYYYMMDD format.",
+        help="Only include files with timetag on or before this, in YYYYMMDD "
+        "or YYYY-MM-DD format.",
     )
     subparser.add_argument(
         "--file-extension",
@@ -114,12 +116,14 @@ def add_query_housekeeping_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--timetag-start",
         type=str,
-        help="Only include files with timetag on or after this, in YYYYMMDD format.",
+        help="Only include files with timetag on or after this, in YYYYMMDD "
+        "or YYYY-MM-DD format.",
     )
     subparser.add_argument(
         "--timetag-end",
         type=str,
-        help="Only include files with timetag on or before this, in YYYYMMDD format.",
+        help="Only include files with timetag on or before this, in YYYYMMDD "
+        "or YYYY-MM-DD format.",
     )
     subparser.add_argument("--version", type=int, help="File version to match.")
     subparser.add_argument("--md5checksum", type=str, help="MD5 checksum to match.")
@@ -173,12 +177,14 @@ def add_query_science_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--timetag-start",
         type=str,
-        help="Only include files with timetag on or after this, in YYYYMMDD format.",
+        help="Only include files with timetag on or after this, in YYYYMMDD "
+        "or YYYY-MM-DD format.",
     )
     subparser.add_argument(
         "--timetag-end",
         type=str,
-        help="Only include files with timetag on or before this, in YYYYMMDD format.",
+        help="Only include files with timetag on or before this, in YYYYMMDD "
+        "or YYYY-MM-DD format.",
     )
     subparser.add_argument("--descriptor", type=str, help="Descriptor to match.")
     subparser.add_argument(
@@ -231,14 +237,14 @@ def add_query_mission_events_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--start-date",
         type=str,
-        help="Start of the query window, in YYYYMMDD format. Only include "
-        "events that end on or after this.",
+        help="Start of the query window, in YYYYMMDD or YYYY-MM-DD format. "
+        "Only include events that end on or after this.",
     )
     subparser.add_argument(
         "--end-date",
         type=str,
-        help="End of the query window, in YYYYMMDD format. Only include "
-        "events that start on or before this.",
+        help="End of the query window, in YYYYMMDD or YYYY-MM-DD format. "
+        "Only include events that start on or before this.",
     )
     subparser.add_argument("--version", type=int, help="File version to match.")
     subparser.add_argument("--md5checksum", type=str, help="MD5 checksum to match.")
@@ -281,13 +287,13 @@ def add_query_manifest_args(subparser: ArgumentParser) -> None:
         "--timetag-start",
         type=str,
         help="Only include files with timetag on or after this, in "
-        "YYYYMMDDHHMM format.",
+        "YYYYMMDDHHMM or YYYY-MM-DDTHH:MM:SS format.",
     )
     subparser.add_argument(
         "--timetag-end",
         type=str,
         help="Only include files with timetag on or before this, in "
-        "YYYYMMDDHHMM format.",
+        "YYYYMMDDHHMM or YYYY-MM-DDTHH:MM:SS format.",
     )
     subparser.set_defaults(func=_query_manifest_parser)
 
