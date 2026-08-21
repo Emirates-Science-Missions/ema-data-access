@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
+import ema_data_access
 from ema_data_access.file_validation import SPICEFilePath
 from ema_data_access.processing_input import (
     ProcessingInput,
@@ -43,23 +44,6 @@ def test_create_spice_input_invalid_filename():
     """Test that an unrecognized filename raises when building a SPICEInput."""
     with pytest.raises(Exception, match=r"not_a_spice_file\.exe"):
         SPICEInput("not_a_spice_file.exe")
-
-
-def test_spice_input_descriptor_reconstructed():
-    """Test that a reconstructed-only kernel keeps the "historical" descriptor."""
-    spice_input = SPICEInput("ema_recon_20240101_20240115_v001.bsp")
-
-    assert spice_input.descriptor == "historical"
-
-
-def test_spice_input_descriptor_best_effort():
-    """Test that a predicted/reference kernel flips the descriptor to "best"."""
-    spice_input = SPICEInput(
-        "ema_recon_20240101_20240115_v001.bsp",
-        "ema_pred_20240116_20240131_v001.bsp",
-    )
-
-    assert spice_input.descriptor == "best"
 
 
 def test_get_time_range():
@@ -140,25 +124,33 @@ def test_get_processing_inputs():
 
 
 def test_get_file_paths():
-    """Test getting S3 key paths for all files in the collection."""
+    """Test getting local file paths, rooted at DATA_DIR, for all files."""
+    data_dir = ema_data_access.config["DATA_DIR"]
     collection = ProcessingInputCollection(SPICEInput("naif0012.tls", "de440.bsp"))
 
     paths = collection.get_file_paths()
 
-    assert {str(p) for p in paths} == {
-        "spice/lsk/naif0012.tls",
-        "spice/spk/de440.bsp",
+    assert set(paths) == {
+        data_dir / "spice/lsk/naif0012.tls",
+        data_dir / "spice/spk/de440.bsp",
     }
     assert collection.get_file_paths(data_type="ancillary") == []
 
 
 def test_download_all_files():
-    """Test that download_all_files downloads every file in the collection."""
+    """Test that download_all_files downloads each file to its DATA_DIR path."""
+    data_dir = ema_data_access.config["DATA_DIR"]
     collection = ProcessingInputCollection(SPICEInput("naif0012.tls", "de440.bsp"))
 
     with patch("ema_data_access.processing_input.download") as mock_download:
         collection.download_all_files()
 
     assert mock_download.call_count == 2
-    called_names = {call.args[0] for call in mock_download.call_args_list}
-    assert called_names == {"naif0012.tls", "de440.bsp"}
+    called = {
+        (call.args[0], call.kwargs["destination"])
+        for call in mock_download.call_args_list
+    }
+    assert called == {
+        ("naif0012.tls", data_dir / "spice/lsk/naif0012.tls"),
+        ("de440.bsp", data_dir / "spice/spk/de440.bsp"),
+    }

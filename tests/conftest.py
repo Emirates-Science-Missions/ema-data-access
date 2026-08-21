@@ -8,13 +8,14 @@ import ema_data_access
 
 
 @pytest.fixture(autouse=True)
-def _set_global_config(monkeypatch: pytest.fixture):
+def _set_global_config(monkeypatch: pytest.fixture, tmp_path: pytest.fixture):
     """Set the global config values for tests."""
     monkeypatch.setitem(
         ema_data_access.config, "DATA_ACCESS_URL", "https://api.test.com"
     )
     # Make sure we don't leak any of this content if a user has set them locally
     monkeypatch.setitem(ema_data_access.config, "API_KEY", None)
+    monkeypatch.setitem(ema_data_access.config, "DATA_DIR", tmp_path)
 
 
 @pytest.fixture(autouse=True)
