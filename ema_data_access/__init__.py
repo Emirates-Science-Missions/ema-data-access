@@ -8,9 +8,28 @@ import importlib.metadata
 import os
 from pathlib import Path
 
+from ema_data_access.file_validation import (
+    AncillaryFilePath,
+    EmaFilePath,
+    HousekeepingFilePath,
+    ManifestFilePath,
+    MissionEventsFilePath,
+    ScienceFilePath,
+    SPICEFilePath,
+)
 from ema_data_access.io import download, query_ancillary, query_manifest, upload
+from ema_data_access.processing_input import ProcessingInputCollection, SPICEInput
 
 __all__ = [
+    "AncillaryFilePath",
+    "EmaFilePath",
+    "HousekeepingFilePath",
+    "ManifestFilePath",
+    "MissionEventsFilePath",
+    "ProcessingInputCollection",
+    "SPICEFilePath",
+    "SPICEInput",
+    "ScienceFilePath",
     "download",
     "query_ancillary",
     "query_manifest",
@@ -31,11 +50,10 @@ API_KEY : Static API key used to authenticate as a 'team' member. Required
     to see unreleased files; get one from scripts/manage_api_keys.py in the
     ema-pdc repo. Set through the EMA_API_KEY environment variable. Not
     needed to query the 'manifest' table, which is public.
-DATA_DIR : Local root directory that ProcessingInputCollection.download_all_files()
-    downloads files into, organized under the same relative layout as their
-    S3 keys (e.g. DATA_DIR/ancillary/<file>, DATA_DIR/spice/spk/<file>).
-    `download()` itself ignores this and takes an explicit destination; this
-    only backs ProcessingInputCollection.get_file_paths()/download_all_files().
-    Set through the EMA_DATA_DIR environment variable; defaults to "data/" in
-    the current working directory.
+DATA_DIR : This is where the file data is stored and organized by table
+    (e.g. DATA_DIR/ancillary/<file>, DATA_DIR/spice/spk/<file>) - see
+    EmaFilePath.construct_path(). Set through the EMA_DATA_DIR environment
+    variable; defaults to a 'data/' folder in the current working
+    directory. `download()` itself ignores this and takes an explicit
+    destination instead.
 """
