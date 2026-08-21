@@ -1,7 +1,6 @@
 """Tests for the ``processing_input`` module."""
 
 import json
-from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -27,11 +26,11 @@ def test_create_spice_input():
     assert one_file.input_type == ProcessingInputType.SPICE_FILE
     assert one_file.data_type == "spice"
     assert one_file.descriptor == "historical"
-    assert one_file.source == ["leapseconds"]
+    assert one_file.source == ["lsk"]
 
     assert two_files.filename_list == ["naif0012.tls", "de440.bsp"]
     assert len(two_files.ema_file_paths) == 2
-    assert two_files.source == ["leapseconds", "ephem_planetary"]
+    assert two_files.source == ["lsk", "spk"]
 
 
 def test_create_spice_input_no_files():
@@ -44,27 +43,6 @@ def test_create_spice_input_invalid_filename():
     """Test that an unrecognized filename raises when building a SPICEInput."""
     with pytest.raises(Exception, match=r"not_a_spice_file\.exe"):
         SPICEInput("not_a_spice_file.exe")
-
-
-def test_get_time_range():
-    """Test that only date-ranged kernels contribute to the time range."""
-    spice_input = SPICEInput(
-        "naif0012.tls",  # no date range - should be ignored
-        "ema_recon_20240101_20240115_v001.bsp",
-        "ema_pred_20240116_20240131_v001.bsp",
-    )
-
-    assert spice_input.get_time_range() == (
-        datetime(2024, 1, 1, tzinfo=UTC),
-        datetime(2024, 1, 31, tzinfo=UTC),
-    )
-
-
-def test_get_time_range_no_dated_kernels():
-    """Test that a collection with no date-ranged kernels returns (None, None)."""
-    spice_input = SPICEInput("naif0012.tls")
-
-    assert spice_input.get_time_range() == (None, None)
 
 
 def test_construct_json_output():

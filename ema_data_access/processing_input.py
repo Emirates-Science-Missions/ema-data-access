@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
@@ -101,22 +100,6 @@ class ProcessingInput(ABC):
         `descriptor` field) to share one generic implementation.
         """
 
-    @abstractmethod
-    def get_time_range(self):
-        """Describe the time range covered by the files.
-
-        Should return a tuple with (start_date, end_date). All datapoints
-        in the file should fall within the range, inclusive.
-
-        Abstract method that is overridden for each file type.
-
-        Returns
-        -------
-        (start_time, end_time) : tuple[datetime, datetime]
-            A tuple with the earliest and latest times covered by the files.
-        """
-        raise NotImplementedError
-
     def construct_json_output(self) -> dict:
         """Construct a JSON output.
 
@@ -144,7 +127,7 @@ class SPICEInput(ProcessingInput):
 
         for file in self.filename_list:
             path_validator = SPICEFilePath.from_filename(file)
-            kernel_type = path_validator.spice_metadata["kernel_type"]
+            kernel_type = path_validator.kernel_type
             if kernel_type not in source:
                 source.append(kernel_type)
             file_obj_list.append(path_validator)
@@ -152,28 +135,6 @@ class SPICEInput(ProcessingInput):
         self.source = source
         self.data_type = ProcessingInputType.SPICE_FILE.value
         self.ema_file_paths = file_obj_list
-
-    def get_time_range(self) -> tuple[datetime | None, datetime | None]:
-        """Return the time range covered by the files.
-
-        Returns
-        -------
-        (start_time, end_time) : tuple[datetime | None, datetime | None]
-            The earliest start_date and latest end_date among the files
-            that have one, or (None, None) if none of them do.
-        """
-        start_time = None
-        end_time = None
-        for file_obj in self.ema_file_paths:
-            file_start = file_obj.spice_metadata["start_date"]
-            file_end = file_obj.spice_metadata["end_date"]
-            if file_start is None or file_end is None:
-                continue
-            if start_time is None or file_start < start_time:
-                start_time = file_start
-            if end_time is None or file_end > end_time:
-                end_time = file_end
-        return start_time, end_time
 
 
 @dataclass
