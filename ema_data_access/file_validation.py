@@ -4,7 +4,10 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import ClassVar
+
+import ema_data_access
 
 _PAYLOADS = "mst|emb|emc|rpt|ldr"
 _MANIFEST_PAYLOADS = f"moc|{_PAYLOADS}"
@@ -97,14 +100,16 @@ class EmaFilePath(ABC):
         return {"file_name": self.filename, **self._extra_metadata()}
 
     @abstractmethod
-    def construct_path(self) -> str:
-        """Build the S3 key this file should be stored at.
+    def construct_path(self) -> Path:
+        """Build the local path this file should be stored at.
 
         Returns
         -------
-        str
-            Destination key, relative to the bucket root.
+        Path
+            `ema_data_access.config["DATA_DIR"]` joined with this file's
+            relative key (e.g. `DATA_DIR/ancillary/<filename>`).
         """
+        raise NotImplementedError
 
 
 @dataclass
@@ -135,9 +140,9 @@ class AncillaryFilePath(EmaFilePath):
             "file_extension": self.file_extension,
         }
 
-    def construct_path(self) -> str:
+    def construct_path(self) -> Path:
         """See base class."""
-        return f"ancillary/{self.filename}"
+        return ema_data_access.config["DATA_DIR"] / f"ancillary/{self.filename}"
 
 
 @dataclass
@@ -161,9 +166,12 @@ class ManifestFilePath(EmaFilePath):
     def _extra_metadata(self) -> dict:
         return {"payload": self.payload, "timetag": self.timetag}
 
-    def construct_path(self) -> str:
+    def construct_path(self) -> Path:
         """See base class."""
-        return f"manifest/{self.payload}/{self.filename}"
+        return (
+            ema_data_access.config["DATA_DIR"]
+            / f"manifest/{self.payload}/{self.filename}"
+        )
 
 
 @dataclass
@@ -187,9 +195,12 @@ class HousekeepingFilePath(EmaFilePath):
     def _extra_metadata(self) -> dict:
         return {"payload": self.payload, "timetag": self.timetag}
 
-    def construct_path(self) -> str:
+    def construct_path(self) -> Path:
         """See base class."""
-        return f"housekeeping/{self.payload}/{self.filename}"
+        return (
+            ema_data_access.config["DATA_DIR"]
+            / f"housekeeping/{self.payload}/{self.filename}"
+        )
 
 
 @dataclass
@@ -282,9 +293,12 @@ class ScienceFilePath(EmaFilePath):
             "file_extension": self.file_extension,
         }
 
-    def construct_path(self) -> str:
+    def construct_path(self) -> Path:
         """See base class."""
-        return f"science/{self.payload}/{self.data_level}/{self.filename}"
+        return (
+            ema_data_access.config["DATA_DIR"]
+            / f"science/{self.payload}/{self.data_level}/{self.filename}"
+        )
 
 
 @dataclass
@@ -309,9 +323,9 @@ class MissionEventsFilePath(EmaFilePath):
     def _extra_metadata(self) -> dict:
         return {"start_date": self.start_date, "end_date": self.end_date}
 
-    def construct_path(self) -> str:
+    def construct_path(self) -> Path:
         """See base class."""
-        return f"mission_events/{self.filename}"
+        return ema_data_access.config["DATA_DIR"] / f"mission_events/{self.filename}"
 
 
 class SPICEFilePath(EmaFilePath):
@@ -515,13 +529,11 @@ class SPICEFilePath(EmaFilePath):
     def _extra_metadata(self) -> dict:
         return dict(self.spice_metadata)
 
-    def construct_path(self) -> str:
-        """See base class.
-
-        expected return: <_dir_prefix>/<kernel_type>/<filename>
-        """
+    def construct_path(self) -> Path:
+        """See base class."""
         return (
-            f"{self._dir_prefix}/{self.spice_metadata['kernel_type']}/{self.filename}"
+            ema_data_access.config["DATA_DIR"]
+            / f"spice/{self.kernel_type}/{self.filename}"
         )
 
 

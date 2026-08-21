@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+import ema_data_access
 from ema_data_access.file_validation import (
     AncillaryFilePath,
     HousekeepingFilePath,
@@ -29,7 +30,9 @@ def test_ancillary_file_path():
         "timetag": datetime(2024, 1, 15, tzinfo=UTC),
         "file_extension": "csv",
     }
-    assert parsed.construct_path() == "ancillary/ema_l1_anc_sc_123_20240115.csv"
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "ancillary/ema_l1_anc_sc_123_20240115.csv"
+    )
 
 
 @pytest.mark.parametrize(
@@ -68,7 +71,9 @@ def test_manifest_file_path(filename: str, payload: str):
 
     assert parsed.payload == payload
     assert parsed.timetag == datetime(2024, 1, 15, 12, 30, tzinfo=UTC)
-    assert parsed.construct_path() == f"manifest/{payload}/{filename}"
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        f"manifest/{payload}/{filename}"
+    )
 
 
 def test_manifest_file_path_invalid_payload():
@@ -88,7 +93,9 @@ def test_housekeeping_file_path():
         "payload": "emb",
         "timetag": datetime(2024, 1, 15, tzinfo=UTC),
     }
-    assert parsed.construct_path() == ("housekeeping/emb/ema_l0_hsk_emb_20240115.pkts")
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "housekeeping/emb/ema_l0_hsk_emb_20240115.pkts"
+    )
 
 
 def test_housekeeping_file_path_invalid_payload():
@@ -117,7 +124,9 @@ def test_science_file_path_l0():
     assert parsed.version is None
     assert parsed.subversion is None
     assert parsed.file_extension == "pkts"
-    assert parsed.construct_path() == "science/emb/l0/ema_l0_sci_emb_20240115.pkts"
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "science/emb/l0/ema_l0_sci_emb_20240115.pkts"
+    )
 
 
 def test_science_file_path_l1a():
@@ -144,7 +153,9 @@ def test_science_file_path_l1a():
         "subversion": 1,
         "file_extension": "fits",
     }
-    assert parsed.construct_path() == f"science/emb/l1a/{filename}"
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        f"science/emb/l1a/{filename}"
+    )
 
 
 def test_science_file_path_invalid():
@@ -170,7 +181,7 @@ def test_mission_events_file_path():
 
     assert parsed.start_date == datetime(2024, 1, 1, tzinfo=UTC)
     assert parsed.end_date == datetime(2024, 1, 31, tzinfo=UTC)
-    assert parsed.construct_path() == (
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
         "mission_events/ema_mission_events_20240101_20240131.xml"
     )
 
@@ -420,7 +431,7 @@ def test_spice_file_path_unknown_extension():
         ),
         ("ema_mission_events_20240101_20240131.xml", MissionEventsFilePath),
         ("moc_manifest_202401151230.txt", ManifestFilePath),
-        ("ema_sclk_001.tsc", SPICEFilePath),
+        ("ema_sclk_00001.tsc", SPICEFilePath),
     ],
 )
 def test_generate_ema_file_path(filename: str, expected_type: type):
