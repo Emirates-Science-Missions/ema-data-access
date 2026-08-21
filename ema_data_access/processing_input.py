@@ -15,7 +15,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar
 
 from ema_data_access.file_validation import EmaFilePath, SPICEFilePath
 from ema_data_access.io import download
@@ -55,9 +54,7 @@ class ProcessingInput(ABC):
         The type of data, e.g. instrument data level, "ancillary", or
         "spice". Used to serialize() output and to query by data type.
     descriptor : str
-        A descriptor for the file. SPICE files use "historical" for
-        reconstructed/definitive kernels, or "best" for predicted/reference
-        kernels (used when a reconstructed kernel isn't available yet).
+        A descriptor for the file. SPICE files use "historical".
     """
 
     filename_list: list[str] = None
@@ -140,15 +137,8 @@ class SPICEInput(ProcessingInput):
     input_type = ProcessingInputType.SPICE_FILE
     descriptor = "historical"
 
-    # kernel_type values (see SPICEFilePath.spice_metadata) that are a
-    # best-effort stand-in for a reconstructed kernel, used when the
-    # definitive reconstructed kernel isn't available yet.
-    _BEST_EFFORT_KERNEL_TYPES: ClassVar[frozenset[str]] = frozenset(
-        {"ephem_predicted", "ephem_reference", "attitude_predicted"}
-    )
-
     def _set_attributes_from_filenames(self) -> None:
-        """Set the source, descriptor, and file object attributes."""
+        """Set the source and file object attributes."""
         source = []
         file_obj_list = []
 
@@ -159,20 +149,12 @@ class SPICEInput(ProcessingInput):
                 source.append(kernel_type)
             file_obj_list.append(path_validator)
 
-            if kernel_type in self._BEST_EFFORT_KERNEL_TYPES:
-                self.descriptor = "best"
-
         self.source = source
         self.data_type = ProcessingInputType.SPICE_FILE.value
         self.ema_file_paths = file_obj_list
 
     def get_time_range(self) -> tuple[datetime | None, datetime | None]:
         """Return the time range covered by the files.
-
-        Only date-ranged kernel types (spacecraft ephemeris and attitude
-        kernels) carry a `start_date`/`end_date` at all; single-current-file
-        kernel types (leapseconds, planetary constants, frames, spacecraft
-        clock, body/planetary ephemerides) have none and are skipped here.
 
         Returns
         -------
@@ -319,11 +301,14 @@ class ProcessingInputCollection:
         descriptor: str | None = None,
         data_type: str | None = None,
     ) -> list[Path]:
-        """Get the dependency file paths from the collection.
+        """Get the local file paths for the dependencies in the collection.
 
         Returns all file paths if no filters are provided. Otherwise, it
         returns only the files that match the given source, descriptor,
-        and/or data type.
+        and/or data type. Each path is under `ema_data_access.config
+        ["DATA_DIR"]` (see `EmaFilePath.construct_path`) - the same layout
+        `download_all_files` downloads into, so these paths are valid to
+        open once that's done.
 
         Parameters
         ----------
@@ -337,19 +322,23 @@ class ProcessingInputCollection:
         Returns
         -------
         list[Path]
-            List of S3 key paths for files contained in the collection.
+            List of local file paths for files contained in the collection.
         """
         out = []
         for processing_input in self.get_processing_inputs(
             source=source, descriptor=descriptor, data_type=data_type
         ):
             out.extend(
-                Path(file.construct_path()) for file in processing_input.ema_file_paths
+                file.construct_path() for file in processing_input.ema_file_paths
             )
 
         return out
 
     def download_all_files(self) -> None:
-        """Download all the dependency files in the collection."""
+        """Download all the dependency files in the collection.
+
+        Each file is saved under `ema_data_access.config["DATA_DIR"]`, at
+        the same relative path `get_file_paths()` returns for it.
+        """
         for path in self.get_file_paths():
-            download(path.name)
+            download(path.name, destination=path)
