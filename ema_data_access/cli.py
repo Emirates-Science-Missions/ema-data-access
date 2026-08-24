@@ -16,6 +16,7 @@ Use
     ema-data-access query-mission-events --start-date 20240101 --end-date 20240110
     ema-data-access query-manifest --payload emb
     ema-data-access upload path/to/ema_l1_anc_sc_1234_20240101.csv
+    ema-data-access download ema_l1_anc_sc_1234_20240101.csv
 """
 
 import argparse
@@ -326,6 +327,38 @@ def add_upload_args(subparser: ArgumentParser) -> None:
     subparser.set_defaults(func=_upload_parser)
 
 
+def _download_parser(args: argparse.Namespace) -> None:
+    """Download a file from the EMA PDC data archive.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        An object containing the parsed arguments and their values.
+    """
+    output_path = ema_data_access.download(args.file_name, destination=args.destination)
+    print(f"Downloaded {args.file_name} to {output_path}")
+
+
+def add_download_args(subparser: ArgumentParser) -> None:
+    """Add download arguments to a subparser.
+
+    Parameters
+    ----------
+    subparser : argparse.ArgumentParser
+        A subparser to add the download arguments to.
+    """
+    subparser.add_argument(
+        "file_name", type=str, help="Exact name of the file to download."
+    )
+    subparser.add_argument(
+        "--destination",
+        type=Path,
+        help="Directory or file path to save the downloaded file to. "
+        "Defaults to the current directory.",
+    )
+    subparser.set_defaults(func=_download_parser)
+
+
 def main():
     """Parse the command line arguments.
 
@@ -360,6 +393,9 @@ def main():
 
     upload_parser = subparsers.add_parser("upload")
     add_upload_args(upload_parser)
+
+    download_parser = subparsers.add_parser("download")
+    add_download_args(download_parser)
 
     args = parser.parse_args()
 

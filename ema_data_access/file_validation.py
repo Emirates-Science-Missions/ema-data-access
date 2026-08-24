@@ -108,7 +108,8 @@ class AncillaryFilePath(EmaFilePath):
     file_extension: str
 
     _PATTERN: ClassVar[re.Pattern] = re.compile(
-        r"ema_l1_anc_sc_(?P<apid>\d+)_(?P<timetag>\d{8})\.(?P<file_extension>csv)"
+        r"ema_l1_anc_sc_(?P<apid>\d+)_(?P<timetag>\d{8})(?:_v\d+)?"
+        r"\.(?P<file_extension>csv)"
     )
 
     @classmethod
@@ -165,7 +166,7 @@ class HousekeepingFilePath(EmaFilePath):
     timetag: datetime
 
     _PATTERN: ClassVar[re.Pattern] = re.compile(
-        rf"ema_l0_hsk_(?P<payload>{_PAYLOADS})_(?P<timetag>\d{{8}})\.pkts"
+        rf"ema_l0_hsk_(?P<payload>{_PAYLOADS})_(?P<timetag>\d{{8}})(?:_v\d+)?\.pkts"
     )
 
     @classmethod
@@ -202,7 +203,8 @@ class ScienceFilePath(EmaFilePath):
     file_extension: str
 
     _L0_PATTERN: ClassVar[re.Pattern] = re.compile(
-        rf"ema_l0_sci_(?P<payload>{_PAYLOADS})_(?P<timetag>\d{{8}})\.(?P<file_extension>pkts)"
+        rf"ema_l0_sci_(?P<payload>{_PAYLOADS})_(?P<timetag>\d{{8}})(?:_v\d+)?"
+        rf"\.(?P<file_extension>pkts)"
     )
     _L1_PATTERN: ClassVar[re.Pattern] = re.compile(
         rf"ema_(?P<payload>{_PAYLOADS})_(?P<data_level>{_DATA_LEVELS})_"
@@ -283,7 +285,8 @@ class MissionEventsFilePath(EmaFilePath):
     end_date: datetime
 
     _PATTERN: ClassVar[re.Pattern] = re.compile(
-        r"ema_mission_events_(?P<start_date>\d{8})_(?P<end_date>\d{8})\.xml"
+        r"ema_mission_events_(?P<start_date>\d{8})_(?P<end_date>\d{8})"
+        r"(?:_v\d+)?\.xml"
     )
 
     @classmethod

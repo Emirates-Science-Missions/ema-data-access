@@ -174,6 +174,36 @@ $ curl -X POST -H "x-api-key: $EMA_API_KEY" <url>/upload/ema_l1_anc_sc_1234_2024
 $ curl -X PUT -T path/to/ema_l1_anc_sc_1234_20240101.csv "<presigned-url>"
 ```
 
+### Download a file
+
+Download a file from the EMA data archive by name. Unreleased files require
+an API key with at least team-level access.
+
+```bash
+$ EMA_API_KEY=<your-api-key> ema-data-access --url <url> download ema_l1_anc_sc_1234_20240101.csv
+```
+
+or with CLI flags
+
+```bash
+$ ema-data-access --url <url> --api-key <your-api-key> download ema_l1_anc_sc_1234_20240101.csv
+```
+
+By default, the file is saved in the current directory under its own name.
+Pass `--destination` to save it elsewhere, either as a directory or a full
+file path:
+
+```bash
+$ ema-data-access --url <url> download ema_l1_anc_sc_1234_20240101.csv --destination path/to/dir
+```
+
+If the destination file already exists, the download is skipped. Under the
+hood, this is equivalent to:
+
+```bash
+$ curl -H "x-api-key: $EMA_API_KEY" -o ema_l1_anc_sc_1234_20240101.csv "<url>/download/ema_l1_anc_sc_1234_20240101.csv"
+```
+
 ## Importing as a package
 
 ```python
@@ -195,6 +225,8 @@ results = ema_data_access.query_mission_events(
 results = ema_data_access.query_manifest(payload="emb")
 
 ema_data_access.upload("path/to/ema_l1_anc_sc_1234_20240101.csv")
+
+ema_data_access.download("ema_l1_anc_sc_1234_20240101.csv", destination="path/to/dir")
 ```
 
 ## Running tests

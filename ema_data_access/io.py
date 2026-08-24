@@ -4,6 +4,7 @@ import contextlib
 import logging
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import requests
 
@@ -371,6 +372,53 @@ def query_manifest(
         logger.debug("Received JSON: %s", items)
 
     return items
+
+
+def download(file_name: str, destination: Path | str | None = None) -> Path:
+    """Download a file from the EMA data archive.
+
+    Parameters
+    ----------
+    file_name : str
+        Exact name of the file to download.
+    destination : pathlib.Path or str, optional
+        Where to save the downloaded file. May be a directory, in which case
+        the file is saved inside it as `file_name`, or a full file path.
+        Defaults to `file_name` in the current working directory.
+
+    Returns
+    -------
+    pathlib.Path
+        Path to the downloaded file.
+
+    Raises
+    ------
+    ValueError
+        If `file_name` is not a bare file name (e.g. contains path
+        separators or `..`).
+    """
+    if file_name in ("", ".", "..") or Path(file_name).name != file_name:
+        raise ValueError(f"file_name must be a bare file name, got {file_name!r}")
+
+    destination = Path(destination) if destination is not None else Path(file_name)
+    if destination.is_dir():
+        destination = destination / file_name
+
+    if destination.exists():
+        logger.info(
+            "%s already exists at %s, skipping download", file_name, destination
+        )
+        return destination
+
+    url = f"{_get_base_url()}/download/{quote(file_name)}"
+    request = requests.Request(method="GET", url=url).prepare()
+
+    logger.info("Downloading %s", file_name)
+    with _make_request(request) as response:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(response.content)
+
+    return destination
 
 
 def upload(file_path: Path | str) -> None:

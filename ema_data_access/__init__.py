@@ -8,6 +8,7 @@ import importlib.metadata
 import os
 
 from ema_data_access.io import (
+    download,
     query_ancillary,
     query_housekeeping,
     query_manifest,
@@ -17,6 +18,7 @@ from ema_data_access.io import (
 )
 
 __all__ = [
+    "download",
     "query_ancillary",
     "query_housekeeping",
     "query_manifest",
