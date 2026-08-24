@@ -533,7 +533,7 @@ class SPICEFilePath(EmaFilePath):
         """See base class."""
         return (
             ema_data_access.config["DATA_DIR"]
-            / f"spice/{self.kernel_type}/{self.filename}"
+            / f"spice/{self.spice_metadata['kernel_type']}/{self.filename}"
         )
 
 

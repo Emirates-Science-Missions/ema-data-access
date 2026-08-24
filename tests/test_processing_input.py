@@ -26,11 +26,11 @@ def test_create_spice_input():
     assert one_file.input_type == ProcessingInputType.SPICE_FILE
     assert one_file.data_type == "spice"
     assert one_file.descriptor == "historical"
-    assert one_file.source == ["lsk"]
+    assert one_file.source == ["leapseconds"]
 
     assert two_files.filename_list == ["naif0012.tls", "de440.bsp"]
     assert len(two_files.ema_file_paths) == 2
-    assert two_files.source == ["lsk", "spk"]
+    assert two_files.source == ["leapseconds", "ephem_planetary"]
 
 
 def test_create_spice_input_no_files():
@@ -109,8 +109,8 @@ def test_get_file_paths():
     paths = collection.get_file_paths()
 
     assert set(paths) == {
-        data_dir / "spice/lsk/naif0012.tls",
-        data_dir / "spice/spk/de440.bsp",
+        data_dir / "spice/leapseconds/naif0012.tls",
+        data_dir / "spice/ephem_planetary/de440.bsp",
     }
     assert collection.get_file_paths(data_type="ancillary") == []
 
@@ -129,6 +129,6 @@ def test_download_all_files():
         for call in mock_download.call_args_list
     }
     assert called == {
-        ("naif0012.tls", data_dir / "spice/lsk/naif0012.tls"),
-        ("de440.bsp", data_dir / "spice/spk/de440.bsp"),
+        ("naif0012.tls", data_dir / "spice/leapseconds/naif0012.tls"),
+        ("de440.bsp", data_dir / "spice/ephem_planetary/de440.bsp"),
     }

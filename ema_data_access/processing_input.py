@@ -127,7 +127,7 @@ class SPICEInput(ProcessingInput):
 
         for file in self.filename_list:
             path_validator = SPICEFilePath.from_filename(file)
-            kernel_type = path_validator.kernel_type
+            kernel_type = path_validator.spice_metadata["kernel_type"]
             if kernel_type not in source:
                 source.append(kernel_type)
             file_obj_list.append(path_validator)

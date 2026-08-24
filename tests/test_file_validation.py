@@ -200,41 +200,55 @@ def test_spice_file_path():
     """Tests the ``SPICEFilePath`` class."""
     # Spacecraft ephemeris: predicted/reconstructed/reference
     file_path = SPICEFilePath("ema_recon_20240101_20240115_v001.bsp")
-    assert file_path.construct_path() == (
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
         "spice/ephem_reconstructed/ema_recon_20240101_20240115_v001.bsp"
     )
 
     # GSINT-224 Asteroid Ephemeris: one file per body
     file_path = SPICEFilePath("ema_sun_v001.bsp")
-    assert file_path.construct_path() == "spice/ephem_sun/ema_sun_v001.bsp"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/ephem_sun/ema_sun_v001.bsp"
+    )
 
     # Standard NAIF DE-series Planetary Ephemeris -- no "ema_" prefix
     file_path = SPICEFilePath("de440.bsp")
-    assert file_path.construct_path() == "spice/ephem_planetary/de440.bsp"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/ephem_planetary/de440.bsp"
+    )
 
     # Standard NAIF Mars System Ephemeris
     file_path = SPICEFilePath("mar097.bsp")
-    assert file_path.construct_path() == "spice/ephem_mars_system/mar097.bsp"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/ephem_mars_system/mar097.bsp"
+    )
 
     # Standard NAIF leapseconds / planetary constants conventions
     file_path = SPICEFilePath("naif0012.tls")
-    assert file_path.construct_path() == "spice/leapseconds/naif0012.tls"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/leapseconds/naif0012.tls"
+    )
     file_path = SPICEFilePath("pck00011.tpc")
-    assert file_path.construct_path() == "spice/planetary_constants/pck00011.tpc"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/planetary_constants/pck00011.tpc"
+    )
 
     # EMA spacecraft clock / frames -- "vvv" is the version number
     file_path = SPICEFilePath("ema_sclk_001.tsc")
-    assert file_path.construct_path() == "spice/spacecraft_clock/ema_sclk_001.tsc"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/spacecraft_clock/ema_sclk_001.tsc"
+    )
     file_path = SPICEFilePath("ema_fk_001.tf")
-    assert file_path.construct_path() == "spice/frames/ema_fk_001.tf"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/frames/ema_fk_001.tf"
+    )
 
     # Observatory attitude reconstructed/predicted
     file_path = SPICEFilePath("ema_rck_20240101_20240115_v001.bc")
-    assert file_path.construct_path() == (
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
         "spice/attitude_reconstructed/ema_rck_20240101_20240115_v001.bc"
     )
     file_path = SPICEFilePath("ema_pck_20240101_20240115_v001.bc")
-    assert file_path.construct_path() == (
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
         "spice/attitude_predicted/ema_pck_20240101_20240115_v001.bc"
     )
 
@@ -341,7 +355,9 @@ def test_spice_extract_binary_planetary_constants_parts():
     assert file_path.spice_metadata["kernel_type"] == "planetary_constants"
     assert file_path.spice_metadata["file_root"] == "pck"
     assert len(file_path.spice_metadata) == 5
-    assert file_path.construct_path() == "spice/planetary_constants/pck00011.bpc"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/planetary_constants/pck00011.bpc"
+    )
 
 
 @pytest.mark.parametrize(
