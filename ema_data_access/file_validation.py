@@ -311,31 +311,6 @@ class SPICEFilePath(EmaFilePath):
 
     _dir_prefix = "spice"
 
-    _SPICE_DIR_MAPPING: ClassVar[dict[str, str]] = {
-        "ephem_predicted": "spk",
-        "ephem_reconstructed": "spk",
-        "ephem_reference": "spk",
-        "ephem_sun": "spk",
-        "ephem_venus": "spk",
-        "ephem_earth": "spk",
-        "ephem_mars": "spk",
-        "ephem_wes": "spk",
-        "ephem_chi": "spk",
-        "ephem_roc": "spk",
-        "ephem_va28": "spk",
-        "ephem_rc76": "spk",
-        "ephem_sg6": "spk",
-        "ephem_jus": "spk",
-        "ephem_planetary": "spk",
-        "ephem_mars_system": "spk",
-        "leapseconds": "lsk",
-        "planetary_constants": "pck",
-        "spacecraft_clock": "sclk",
-        "frames": "fk",
-        "attitude_reconstructed": "ck",
-        "attitude_predicted": "ck",
-    }
-
     _SPICE_TYPE_MAPPING: ClassVar[dict[str, str]] = {
         # ema_pred_YYYYMMDD_YYYYMMDD_vvv.bsp
         # ema_recon_..._vvv.bsp
@@ -535,10 +510,11 @@ class SPICEFilePath(EmaFilePath):
     def construct_path(self) -> str:
         """See base class.
 
-        expected return: <_dir_prefix>/<subdir>/<filename>
+        expected return: <_dir_prefix>/<kernel_type>/<filename>
         """
-        subdir = SPICEFilePath._SPICE_DIR_MAPPING[self.spice_metadata["kernel_type"]]
-        return f"{self._dir_prefix}/{subdir}/{self.filename}"
+        return (
+            f"{self._dir_prefix}/{self.spice_metadata['kernel_type']}/{self.filename}"
+        )
 
 
 def generate_ema_file_path(filename: str) -> EmaFilePath:
