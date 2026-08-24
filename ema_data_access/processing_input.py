@@ -25,6 +25,12 @@ class ProcessingInputType(Enum):
     SPICE_FILE = "spice"
 
 
+class SPICESource(Enum):
+    """Enum matching source of SPICE file types."""
+
+    SPICE = "spice"
+
+
 @dataclass
 class ProcessingInput(ABC):
     """Interface for input file management and serialization.

@@ -8,7 +8,6 @@ import importlib.metadata
 import os
 from pathlib import Path
 
-from ema_data_access.io import download, query_ancillary, query_manifest, query_spice, upload
 from ema_data_access.file_validation import (
     AncillaryFilePath,
     EmaFilePath,
@@ -18,8 +17,18 @@ from ema_data_access.file_validation import (
     ScienceFilePath,
     SPICEFilePath,
 )
-from ema_data_access.io import download, query_ancillary, query_manifest, upload
-from ema_data_access.processing_input import ProcessingInputCollection, SPICEInput
+from ema_data_access.io import (
+    download,
+    query_ancillary,
+    query_manifest,
+    query_spice,
+    upload,
+)
+from ema_data_access.processing_input import (
+    ProcessingInputCollection,
+    SPICEInput,
+    SPICESource,
+)
 
 __all__ = [
     "AncillaryFilePath",
@@ -30,6 +39,7 @@ __all__ = [
     "ProcessingInputCollection",
     "SPICEFilePath",
     "SPICEInput",
+    "SPICESource",
     "ScienceFilePath",
     "download",
     "query_ancillary",
