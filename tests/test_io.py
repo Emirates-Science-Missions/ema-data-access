@@ -217,7 +217,8 @@ def test_query_housekeeping_bad_params(mock_send_request):
             "descriptor": "flux",
             "pred_rec": "p",
             "file_extension": "cdf",
-            "version": 1,
+            "major_version": 1,
+            "minor_version": 0,
             "md5checksum": "abc123",
         },
         # Make sure not all query params are sent if they are missing

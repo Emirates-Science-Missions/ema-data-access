@@ -98,8 +98,8 @@ $ EMA_API_KEY=<your-api-key> ema-data-access --url <url> query-science --payload
 ```
 
 Other available filters: `--file-name`, `--timetag-start`, `--timetag-end`,
-`--descriptor`, `--pred-rec`, `--file-extension`, `--version`,
-`--md5checksum`. Results are returned as JSON.
+`--descriptor`, `--pred-rec`, `--file-extension`, `--major-version`,
+`--minor-version`, `--md5checksum`. Results are returned as JSON.
 
 Under the hood, this is equivalent to:
 

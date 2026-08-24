@@ -209,7 +209,8 @@ def query_science(  # noqa: PLR0913
     descriptor: str | None = None,
     pred_rec: str | None = None,
     file_extension: str | None = None,
-    version: int | None = None,
+    major_version: int | None = None,
+    minor_version: int | None = None,
     md5checksum: str | None = None,
 ) -> list[dict]:
     """Query the science table for files matching the given filters.
@@ -235,8 +236,10 @@ def query_science(  # noqa: PLR0913
         Predicted/reconstructed flag to match, "p" or "r".
     file_extension : str, optional
         File extension to match, one of "csv", "fits", "cdf", "pkts".
-    version : int, optional
-        File version to match.
+    major_version : int, optional
+        Major version to match.
+    minor_version : int, optional
+        Minor version to match.
     md5checksum : str, optional
         MD5 checksum to match.
 
@@ -254,7 +257,8 @@ def query_science(  # noqa: PLR0913
         "descriptor": descriptor,
         "pred_rec": pred_rec,
         "file_extension": file_extension,
-        "version": version,
+        "major_version": major_version,
+        "minor_version": minor_version,
         "md5checksum": md5checksum,
     }
     params = {k: v for k, v in params.items() if v is not None}

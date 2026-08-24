@@ -207,7 +207,7 @@ class ScienceFilePath(EmaFilePath):
     _L1_PATTERN: ClassVar[re.Pattern] = re.compile(
         rf"ema_(?P<payload>{_PAYLOADS})_(?P<data_level>{_DATA_LEVELS})_"
         r"(?P<timetag>\d{8}t\d{6})_(?P<descriptor>[a-z0-9\-]+)_"
-        r"(?P<pred_rec>p|r)_v(?P<version>\d+)(?:-(?P<subversion>\d+))?"
+        r"(?P<pred_rec>p|r)_v(?P<version>\d{2})-(?P<subversion>\d{2})"
         r"\.(?P<file_extension>fits)"
     )
 
@@ -247,9 +247,7 @@ class ScienceFilePath(EmaFilePath):
                     descriptor=match["descriptor"],
                     pred_rec=match["pred_rec"],
                     version=int(match["version"]),
-                    subversion=(
-                        int(match["subversion"]) if match["subversion"] else None
-                    ),
+                    subversion=int(match["subversion"]),
                     file_extension=match["file_extension"],
                 )
         except ValueError as err:

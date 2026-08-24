@@ -90,7 +90,8 @@ def test_cli_query_science(capsys):
         descriptor=None,
         pred_rec=None,
         file_extension=None,
-        version=None,
+        major_version=None,
+        minor_version=None,
         md5checksum=None,
     )
     assert "ema_rpt_l1a_20240101t000000_flux_p_v01.cdf" in capsys.readouterr().out

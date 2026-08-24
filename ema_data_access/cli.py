@@ -147,7 +147,8 @@ def _query_science_parser(args: argparse.Namespace) -> None:
         descriptor=args.descriptor,
         pred_rec=args.pred_rec,
         file_extension=args.file_extension,
-        version=args.version,
+        major_version=args.major_version,
+        minor_version=args.minor_version,
         md5checksum=args.md5checksum,
     )
     print(json.dumps(results, indent=2))
@@ -199,7 +200,8 @@ def add_query_science_args(subparser: ArgumentParser) -> None:
         choices=["csv", "fits", "cdf", "pkts"],
         help="File extension to match.",
     )
-    subparser.add_argument("--version", type=int, help="File version to match.")
+    subparser.add_argument("--major-version", type=int, help="Major version to match.")
+    subparser.add_argument("--minor-version", type=int, help="Minor version to match.")
     subparser.add_argument("--md5checksum", type=str, help="MD5 checksum to match.")
     subparser.set_defaults(func=_query_science_parser)
 
