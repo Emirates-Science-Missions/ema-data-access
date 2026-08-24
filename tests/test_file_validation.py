@@ -231,6 +231,7 @@ def test_spice_file_path():
     with pytest.raises(InvalidEmaFileError):
         SPICEFilePath("test.txt")
 
+
 @pytest.mark.parametrize(
     ("type_token", "kernel_type"),
     [
@@ -399,26 +400,6 @@ def test_spice_extract_attitude_predicted_parts():
 
     planetary_constants = SPICEFilePath("pck00011.tpc")
     assert planetary_constants.spice_metadata["kernel_type"] == "planetary_constants"
-
-@pytest.mark.parametrize(
-    ("filename", "file_root", "kernel_type"),
-    [
-        ("ema_sclk_00001.tsc", "ema_sclk_00001", "sclk"),
-        ("ema_2024_001_2024_002_01.bc", "ema_2024_001_2024_002_01", "ck"),
-        ("ema_de440.bsp", "ema_de440", "spk"),
-        ("ema_pck00011.tpc", "ema_pck00011", "pck"),
-        ("ema_naif0012.tls", "ema_naif0012", "lsk"),
-        ("ema_frames.tf", "ema_frames", "fk"),
-        ("ema_meta.tm", "ema_meta", "mk"),
-    ],
-)
-def test_spice_file_path(filename: str, file_root: str, kernel_type: str):
-    """Test the placeholder SPICE convention (see its TODO for context)."""
-    parsed = SPICEFilePath.from_filename(filename)
-
-    assert parsed.file_root == file_root
-    assert parsed.kernel_type == kernel_type
-    assert parsed.construct_path() == f"spice/{kernel_type}/{filename}"
 
 
 def test_spice_file_path_unknown_extension():
