@@ -34,6 +34,14 @@ def _parse_ymdthms(value: str) -> datetime:
     return datetime.strptime(value, "%Y%m%dt%H%M%S").replace(tzinfo=UTC)
 
 
+_VERSION_PREFIX_RE = re.compile(r"^[^\d]*")
+
+
+def _parse_spice_version(value: str) -> int:
+    """Parse a SPICE version token (e.g. "v001", "440") into an int."""
+    return int(_VERSION_PREFIX_RE.sub("", value))
+
+
 @dataclass
 class EmaFilePath(ABC):
     """Base class for a parsed, validated EMA file name."""
@@ -375,9 +383,7 @@ class SPICEFilePath(EmaFilePath):
     planetary_ephemeris_pattern = r"(?P<type>de|mar)(?P<version>\d+)\.bsp"
     leapseconds_pattern = r"(?P<type>naif)(?P<version>\d+)\.tls"
     planetary_constants_pattern = r"(?P<type>pck)(?P<version>\d+)\.(?:tpc|bpc)"
-    single_kernel_pattern = (
-        r"ema_(?P<type>sclk|fk)_(?P<version>[a-zA-Z0-9\-]+)\.(?:tsc|tf)"
-    )
+    single_kernel_pattern = r"ema_(?P<type>sclk|fk)_(?P<version>\d+)\.(?:tsc|tf)"
 
     valid_spice_regexes: ClassVar[tuple[re.Pattern, ...]] = (
         re.compile(spacecraft_ephemeris_pattern),
@@ -498,6 +504,8 @@ class SPICEFilePath(EmaFilePath):
             components["start_date"] = _parse_ymd(components["start_date"])
         if "end_date" in components:
             components["end_date"] = _parse_ymd(components["end_date"])
+        if "version" in components:
+            components["version"] = _parse_spice_version(components["version"])
 
         components.setdefault("start_date", None)
         components.setdefault("end_date", None)
