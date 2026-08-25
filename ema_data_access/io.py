@@ -97,6 +97,7 @@ def query_ancillary(  # noqa: PLR0913
     file_extension: str | None = None,
     version: int | None = None,
     md5checksum: str | None = None,
+    limit: int | None = None,
 ) -> list[dict]:
     """Query the ancillary table for files matching the given filters.
 
@@ -118,6 +119,10 @@ def query_ancillary(  # noqa: PLR0913
         File version to match.
     md5checksum : str, optional
         MD5 checksum to match.
+    limit : int, optional
+        Max number of rows to return. Defaults to 100 server-side, and is
+        a hard cap, not just a suggestion. Narrow `timetag_start`/
+        `timetag_end` to page through results larger than `limit`.
 
     Returns
     -------
@@ -132,6 +137,7 @@ def query_ancillary(  # noqa: PLR0913
         "file_extension": file_extension,
         "version": version,
         "md5checksum": md5checksum,
+        "limit": limit,
     }
     params = {k: v for k, v in params.items() if v is not None}
 
@@ -367,6 +373,76 @@ def query_manifest(
     request = requests.Request(method="GET", url=url, params=params).prepare()
 
     logger.info("Querying manifest table with url %s", request.url)
+    with _make_request(request) as response:
+        items = response.json()
+        logger.debug("Received JSON: %s", items)
+
+    return items
+
+
+def query_spice(  # noqa: PLR0913
+    *,
+    file_name: str | None = None,
+    file_root: str | None = None,
+    min_date_j2000: float | None = None,
+    max_date_j2000: float | None = None,
+    min_date_datetime: str | None = None,
+    max_date_datetime: str | None = None,
+    delivery_date: str | None = None,
+    od_number: int | None = None,
+    version: int | None = None,
+    limit: int | None = None,
+) -> list[dict]:
+    """Query the spice table for files matching the given filters.
+
+    Parameters
+    ----------
+    file_name : str, optional
+        Exact file name to match.
+    file_root : str, optional
+        Root of the file tree to match.
+    min_date_j2000 : float, optional
+        Minimum date to match, in J2000 format.
+    max_date_j2000 : float, optional
+        Maximum date to match, in J2000 format.
+    min_date_datetime : str, optional
+        Minimum date to match, as an ISO 8601 datetime string.
+    max_date_datetime : str, optional
+        Maximum date to match, as an ISO 8601 datetime string.
+    delivery_date : str, optional
+        Exact delivery date to match, as an ISO 8601 datetime string.
+    od_number : int, optional
+        OD number to match.
+    version : int, optional
+        File version to match.
+    limit : int, optional
+        Max number of rows to return. Defaults to 100 server-side, and is
+        a hard cap, not just a suggestion. Narrow `min_date_datetime`/
+        `max_date_datetime` to page through results larger than `limit`.
+
+    Returns
+    -------
+    list
+        List of rows matching the query, as dicts.
+    """
+    params = {
+        "file_name": file_name,
+        "file_root": file_root,
+        "min_date_j2000": min_date_j2000,
+        "max_date_j2000": max_date_j2000,
+        "min_date_datetime": min_date_datetime,
+        "max_date_datetime": max_date_datetime,
+        "delivery_date": delivery_date,
+        "od_number": od_number,
+        "version": version,
+        "limit": limit,
+    }
+    params = {k: v for k, v in params.items() if v is not None}
+
+    url = f"{_get_base_url()}/query_spice"
+    request = requests.Request(method="GET", url=url, params=params).prepare()
+
+    logger.info("Querying spice table with url %s", request.url)
     with _make_request(request) as response:
         items = response.json()
         logger.debug("Received JSON: %s", items)

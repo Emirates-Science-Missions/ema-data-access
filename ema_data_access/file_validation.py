@@ -34,6 +34,14 @@ def _parse_ymdthms(value: str) -> datetime:
     return datetime.strptime(value, "%Y%m%dt%H%M%S").replace(tzinfo=UTC)
 
 
+_VERSION_PREFIX_RE = re.compile(r"^[^\d]*")
+
+
+def _parse_spice_version(value: str) -> int:
+    """Parse a SPICE version token (e.g. "v001", "440") into an int."""
+    return int(_VERSION_PREFIX_RE.sub("", value))
+
+
 @dataclass
 class EmaFilePath(ABC):
     """Base class for a parsed, validated EMA file name."""
@@ -304,44 +312,215 @@ class MissionEventsFilePath(EmaFilePath):
         return f"mission_events/{self.filename}"
 
 
-@dataclass
 class SPICEFilePath(EmaFilePath):
-    """SPICE kernel naming."""
+    """Class for building and validating filepaths for SPICE files."""
 
-    file_root: str
-    kernel_type: str
+    _dir_prefix = "spice"
 
-    # Standard SPICE kernel extension .
-    _KERNEL_TYPE_BY_EXTENSION: ClassVar[dict[str, str]] = {
-        "bc": "ck",
-        "tf": "fk",
-        "tls": "lsk",
-        "tm": "mk",
-        "tpc": "pck",
-        "bpc": "pck",
-        "tsc": "sclk",
-        "bsp": "spk",
+    _SPICE_TYPE_MAPPING: ClassVar[dict[str, str]] = {
+        # ema_pred_YYYYMMDD_YYYYMMDD_vvv.bsp
+        # ema_recon_..._vvv.bsp
+        # ema_ref_..._vvv.bsp
+        "pred": "ephem_predicted",
+        "recon": "ephem_reconstructed",
+        "ref": "ephem_reference",
+        # ema_YYY_vvv.bsp
+        "sun": "ephem_sun",
+        "venus": "ephem_venus",
+        "earth": "ephem_earth",
+        "mars": "ephem_mars",
+        "wes": "ephem_wes",
+        "chi": "ephem_chi",
+        "roc": "ephem_roc",
+        "va28": "ephem_va28",
+        "rc76": "ephem_rc76",
+        "sg6": "ephem_sg6",
+        "jus": "ephem_jus",
+        # deXXX.bsp
+        # marXXX.bsp
+        "de": "ephem_planetary",
+        "mar": "ephem_mars_system",
+        # naifXXXX.tls
+        # pckXXXXX.tpc
+        "naif": "leapseconds",
+        "pck": "planetary_constants",
+        # ema_sclk_vvv.tsc
+        # ema_fk_vvv.tf
+        "sclk": "spacecraft_clock",
+        "fk": "frames",
     }
 
-    # TODO: update pattern when determined.
-    _PATTERN: ClassVar[re.Pattern] = re.compile(
-        r"(?P<file_root>[a-zA-Z0-9\-_]+)\."
-        rf"(?P<extension>{'|'.join(_KERNEL_TYPE_BY_EXTENSION)})"
+    # ema_rck_YYYYMMDD_YYYYMMDD_vvv.bc
+    # ema_pck_YYYYMMDD_YYYYMMDD_vvv.bc
+    _ATTITUDE_TYPE_MAPPING: ClassVar[dict[str, str]] = {
+        "rck": "attitude_reconstructed",
+        "pck": "attitude_predicted",
+    }
+
+    # Standard NAIF single-current-file conventions.
+    _BARE_FILE_ROOT_TYPES: ClassVar[frozenset[str]] = frozenset(
+        {"de", "mar", "naif", "pck"}
     )
 
+    spacecraft_ephemeris_pattern = (
+        r"ema_(?P<type>pred|recon|ref)_"
+        r"(?P<start_date>\d{8})_"
+        r"(?P<end_date>\d{8})_"
+        r"(?P<version>[a-zA-Z0-9\-]+)\.bsp"
+    )
+    attitude_pattern = (
+        r"ema_(?P<attitude_type>rck|pck)_"
+        r"(?P<start_date>\d{8})_"
+        r"(?P<end_date>\d{8})_"
+        r"(?P<version>[a-zA-Z0-9\-]+)\.bc"
+    )
+    body_ephemeris_pattern = (
+        r"ema_(?P<type>sun|venus|earth|mars|wes|chi|roc|va28|rc76|sg6|jus)_"
+        r"(?P<version>[a-zA-Z0-9\-]+)\.bsp"
+    )
+    planetary_ephemeris_pattern = r"(?P<type>de|mar)(?P<version>\d+)\.bsp"
+    leapseconds_pattern = r"(?P<type>naif)(?P<version>\d+)\.tls"
+    planetary_constants_pattern = r"(?P<type>pck)(?P<version>\d+)\.(?:tpc|bpc)"
+    single_kernel_pattern = r"ema_(?P<type>sclk|fk)_(?P<version>\d+)\.(?:tsc|tf)"
+
+    valid_spice_regexes: ClassVar[tuple[re.Pattern, ...]] = (
+        re.compile(spacecraft_ephemeris_pattern),
+        re.compile(attitude_pattern),
+        re.compile(body_ephemeris_pattern),
+        re.compile(planetary_ephemeris_pattern),
+        re.compile(leapseconds_pattern),
+        re.compile(planetary_constants_pattern),
+        re.compile(single_kernel_pattern),
+    )
+
+    def __init__(self, filename: str):
+        """Parse and validate a SPICE file name.
+
+        Parameters
+        ----------
+        filename : str
+            The file name to validate and parse.
+        """
+        self.filename = filename
+        self.spice_metadata = SPICEFilePath.extract_filename_components(self.filename)
+
     @classmethod
-    def _extract_fields(cls, match: re.Match) -> dict:
-        return {
-            "file_root": match["file_root"],
-            "kernel_type": cls._KERNEL_TYPE_BY_EXTENSION[match["extension"]],
-        }
+    def from_filename(cls, filename: str) -> "SPICEFilePath":
+        """Parse `filename`, raising InvalidEmaFileError if it doesn't match.
+
+        Parameters
+        ----------
+        filename : str
+            The file name to validate and parse.
+
+        Returns
+        -------
+        SPICEFilePath
+            The parsed representation of `filename`.
+        """
+        return cls(filename)
+
+    @staticmethod
+    def extract_filename_components(filename: str) -> dict:
+        """Extract SPICE metadata from `filename` via its matching convention.
+
+        Parameters
+        ----------
+        filename : str
+            The file name to validate and parse.
+
+        Returns
+        -------
+        dict
+            `kernel_type`, `file_root`, `start_date`, `end_date`, `version`.
+        """
+        try:
+            for regex in SPICEFilePath.valid_spice_regexes:
+                if match := regex.fullmatch(filename):
+                    return SPICEFilePath._spice_parts_handler(match.groupdict())
+        except ValueError as err:
+            raise InvalidEmaFileError(
+                f"{filename} matched a SPICE convention but failed to parse: {err}"
+            ) from err
+        raise _FilenamePatternMismatchError(f"{filename} does not match SPICEFilePath")
+
+    @staticmethod
+    def _dated_file_root(prefix: str, components: dict) -> str:
+        """Build a date-ranged file_root: ema_<prefix>_<start_date>_<end_date>.
+
+        Parameters
+        ----------
+        prefix : str
+            The convention's type token (e.g. "pred", "rck").
+        components : dict
+            Regex-captured components, with `start_date`/`end_date` still
+            in their raw (unparsed) string form.
+
+        Returns
+        -------
+        str
+            The constructed file_root.
+        """
+        return f"ema_{prefix}_{components['start_date']}_{components['end_date']}"
+
+    @staticmethod
+    def _spice_parts_handler(components: dict) -> dict:
+        """Validate and transform SPICE file components.
+
+        Parameters
+        ----------
+        components : dict
+            Regex-captured components of the filename.
+
+        Returns
+        -------
+        dict
+            `kernel_type`, `file_root`, `start_date`, `end_date`, `version`,
+            with dates converted and missing fields defaulted to `None`.
+        """
+        if "attitude_type" in components:
+            attitude_token = components.pop("attitude_type").lower()
+            components["kernel_type"] = SPICEFilePath._ATTITUDE_TYPE_MAPPING[
+                attitude_token
+            ]
+            components["file_root"] = SPICEFilePath._dated_file_root(
+                attitude_token, components
+            )
+        else:
+            type_token = components.pop("type").lower()
+            components["kernel_type"] = SPICEFilePath._SPICE_TYPE_MAPPING[type_token]
+            if type_token in SPICEFilePath._BARE_FILE_ROOT_TYPES:
+                components["file_root"] = type_token
+            elif "start_date" in components:
+                components["file_root"] = SPICEFilePath._dated_file_root(
+                    type_token, components
+                )
+            else:
+                components["file_root"] = f"ema_{type_token}"
+
+        if "start_date" in components:
+            components["start_date"] = _parse_ymd(components["start_date"])
+        if "end_date" in components:
+            components["end_date"] = _parse_ymd(components["end_date"])
+        if "version" in components:
+            components["version"] = _parse_spice_version(components["version"])
+
+        components.setdefault("start_date", None)
+        components.setdefault("end_date", None)
+        components.setdefault("version", None)
+        return components
 
     def _extra_metadata(self) -> dict:
-        return {"file_root": self.file_root, "kernel_type": self.kernel_type}
+        return dict(self.spice_metadata)
 
     def construct_path(self) -> str:
-        """See base class."""
-        return f"spice/{self.kernel_type}/{self.filename}"
+        """See base class.
+
+        expected return: <_dir_prefix>/<kernel_type>/<filename>
+        """
+        return (
+            f"{self._dir_prefix}/{self.spice_metadata['kernel_type']}/{self.filename}"
+        )
 
 
 def generate_ema_file_path(filename: str) -> EmaFilePath:
@@ -363,16 +542,16 @@ def generate_ema_file_path(filename: str) -> EmaFilePath:
     InvalidEmaFileError
         If `filename` doesn't match any known EMA file convention.
     """
-    for cls in (
-        AncillaryFilePath,
-        HousekeepingFilePath,
-        ScienceFilePath,
-        MissionEventsFilePath,
-        ManifestFilePath,
-        SPICEFilePath,
+    for construct in (
+        AncillaryFilePath.from_filename,
+        HousekeepingFilePath.from_filename,
+        ScienceFilePath.from_filename,
+        MissionEventsFilePath.from_filename,
+        ManifestFilePath.from_filename,
+        SPICEFilePath.from_filename,
     ):
         try:
-            return cls.from_filename(filename)
+            return construct(filename)
         except _FilenamePatternMismatchError:
             continue
     raise InvalidEmaFileError(f"{filename} does not match any known EMA convention")

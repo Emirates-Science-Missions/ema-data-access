@@ -90,6 +90,7 @@ def test_request_errors(mock_send_request):
             "file_extension": "csv",
             "version": 1,
             "md5checksum": "abc123",
+            "limit": 50,
         },
         # Make sure not all query params are sent if they are missing
         {"apid": 123},
@@ -452,6 +453,73 @@ def test_query_manifest_bad_params(mock_send_request):
     """
     with pytest.raises(TypeError, match="got an unexpected"):
         ema_data_access.query_manifest(bad_param="test")
+    # Should not have made any calls to send
+    assert mock_send_request.call_count == 0
+
+
+@pytest.mark.parametrize(
+    "query_params",
+    [
+        # All parameters should send full query
+        {
+            "file_name": "naif0012.tls",
+            "file_root": "naif",
+            "min_date_j2000": 1.0,
+            "max_date_j2000": 2.0,
+            "min_date_datetime": "2024-01-01T00:00:00",
+            "max_date_datetime": "2024-01-02T00:00:00",
+            "delivery_date": "2024-01-01T00:00:00",
+            "od_number": 1,
+            "version": 12,
+            "limit": 50,
+        },
+        # Make sure not all query params are sent if they are missing
+        {"file_root": "naif"},
+        # No parameters at all
+        {},
+    ],
+)
+def test_query_spice(mock_send_request, query_params: dict):
+    """Test a basic call to the spice Query API.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    query_params : dict
+        Dictionary of key/value pairs that set the query parameters
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = []
+    mock_send_request.return_value = mock_response
+
+    response = ema_data_access.query_spice(**query_params)
+    # No data found, and JSON decoding works as expected
+    assert response == list()
+
+    # Should have only been one call to send
+    mock_send_request.assert_called_once()
+    # Assert that the correct URL was used for the query
+    sent_request = mock_send_request.call_args[0][0]
+    called_url = urlparse(sent_request.url)
+    assert f"{called_url.scheme}://{called_url.netloc}{called_url.path}" == (
+        "https://api.test.com/query_spice"
+    )
+    called_params = parse_qs(called_url.query)
+    expected_params = {k: [str(v)] for k, v in query_params.items()}
+    assert called_params == expected_params
+
+
+def test_query_spice_bad_params(mock_send_request):
+    """Test a call to query_spice with an invalid parameter.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.session``
+    """
+    with pytest.raises(TypeError, match="got an unexpected"):
+        ema_data_access.query_spice(bad_param="test")
     # Should not have made any calls to send
     assert mock_send_request.call_count == 0
 

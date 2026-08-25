@@ -14,6 +14,7 @@ from ema_data_access.io import (
     query_manifest,
     query_mission_events,
     query_science,
+    query_spice,
     upload,
 )
 
@@ -24,6 +25,7 @@ __all__ = [
     "query_manifest",
     "query_mission_events",
     "query_science",
+    "query_spice",
     "upload",
 ]
 

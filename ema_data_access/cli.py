@@ -15,6 +15,7 @@ Use
     ema-data-access query-science --payload emb --data-level l1a
     ema-data-access query-mission-events --start-date 20240101 --end-date 20240110
     ema-data-access query-manifest --payload emb
+    ema-data-access query-spice --file-root naif
     ema-data-access upload path/to/ema_l1_anc_sc_1234_20240101.csv
     ema-data-access download ema_l1_anc_sc_1234_20240101.csv
 """
@@ -43,6 +44,7 @@ def _query_ancillary_parser(args: argparse.Namespace) -> None:
         file_extension=args.file_extension,
         version=args.version,
         md5checksum=args.md5checksum,
+        limit=args.limit,
     )
     print(json.dumps(results, indent=2))
 
@@ -77,6 +79,11 @@ def add_query_ancillary_args(subparser: ArgumentParser) -> None:
     )
     subparser.add_argument("--version", type=int, help="File version to match.")
     subparser.add_argument("--md5checksum", type=str, help="MD5 checksum to match.")
+    subparser.add_argument(
+        "--limit",
+        type=int,
+        help="Max number of rows to return. Defaults to 100 server-side.",
+    )
     subparser.set_defaults(func=_query_ancillary_parser)
 
 
@@ -301,6 +308,76 @@ def add_query_manifest_args(subparser: ArgumentParser) -> None:
     subparser.set_defaults(func=_query_manifest_parser)
 
 
+def _query_spice_parser(args: argparse.Namespace) -> None:
+    """Query the EMA PDC spice table for files matching the given filters.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        An object containing the parsed arguments and their values.
+    """
+    results = ema_data_access.query_spice(
+        file_name=args.file_name,
+        file_root=args.file_root,
+        min_date_j2000=args.min_date_j2000,
+        max_date_j2000=args.max_date_j2000,
+        min_date_datetime=args.min_date_datetime,
+        max_date_datetime=args.max_date_datetime,
+        delivery_date=args.delivery_date,
+        od_number=args.od_number,
+        version=args.version,
+        limit=args.limit,
+    )
+    print(json.dumps(results, indent=2))
+
+
+def add_query_spice_args(subparser: ArgumentParser) -> None:
+    """Add query-spice arguments to a subparser.
+
+    Parameters
+    ----------
+    subparser : argparse.ArgumentParser
+        A subparser to add the query-spice arguments to.
+    """
+    subparser.add_argument("--file-name", type=str, help="Exact file name to match.")
+    subparser.add_argument(
+        "--file-root", type=str, help="Root of the file tree to match."
+    )
+    subparser.add_argument(
+        "--min-date-j2000",
+        type=float,
+        help="Minimum date to match, in J2000 format.",
+    )
+    subparser.add_argument(
+        "--max-date-j2000",
+        type=float,
+        help="Maximum date to match, in J2000 format.",
+    )
+    subparser.add_argument(
+        "--min-date-datetime",
+        type=str,
+        help="Minimum date to match, as an ISO 8601 datetime string.",
+    )
+    subparser.add_argument(
+        "--max-date-datetime",
+        type=str,
+        help="Maximum date to match, as an ISO 8601 datetime string.",
+    )
+    subparser.add_argument(
+        "--delivery-date",
+        type=str,
+        help="Exact delivery date to match, as an ISO 8601 datetime string.",
+    )
+    subparser.add_argument("--od-number", type=int, help="OD number to match.")
+    subparser.add_argument("--version", type=int, help="File version to match.")
+    subparser.add_argument(
+        "--limit",
+        type=int,
+        help="Max number of rows to return. Defaults to 100 server-side.",
+    )
+    subparser.set_defaults(func=_query_spice_parser)
+
+
 def _upload_parser(args: argparse.Namespace) -> None:
     """Upload a file to the EMA PDC data archive.
 
@@ -390,6 +467,9 @@ def main():
 
     query_manifest_parser = subparsers.add_parser("query-manifest")
     add_query_manifest_args(query_manifest_parser)
+
+    query_spice_parser = subparsers.add_parser("query-spice")
+    add_query_spice_args(query_spice_parser)
 
     upload_parser = subparsers.add_parser("upload")
     add_upload_args(upload_parser)
