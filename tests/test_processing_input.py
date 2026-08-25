@@ -101,6 +101,17 @@ def test_get_processing_inputs():
     assert collection.get_processing_inputs(data_type="ancillary") == []
 
 
+def test_get_processing_inputs_by_source():
+    """Test filtering by source, where source is a list on the input."""
+    spice_input = SPICEInput("naif0012.tls", "de440.bsp")
+    collection = ProcessingInputCollection(spice_input)
+
+    assert spice_input.source == ["leapseconds", "ephem_planetary"]
+    assert collection.get_processing_inputs(source="leapseconds") == [spice_input]
+    assert collection.get_processing_inputs(source="ephem_planetary") == [spice_input]
+    assert collection.get_processing_inputs(source="attitude_history") == []
+
+
 def test_get_file_paths():
     """Test getting local file paths, rooted at DATA_DIR, for all files."""
     data_dir = ema_data_access.config["DATA_DIR"]
@@ -113,6 +124,22 @@ def test_get_file_paths():
         data_dir / "spice/ephem_planetary/de440.bsp",
     }
     assert collection.get_file_paths(data_type="ancillary") == []
+
+
+def test_get_file_paths_by_source():
+    """Test filtering file paths by source across separate inputs."""
+    data_dir = ema_data_access.config["DATA_DIR"]
+    collection = ProcessingInputCollection(
+        SPICEInput("naif0012.tls"), SPICEInput("de440.bsp")
+    )
+
+    assert collection.get_file_paths(source="leapseconds") == [
+        data_dir / "spice/leapseconds/naif0012.tls"
+    ]
+    assert collection.get_file_paths(source="ephem_planetary") == [
+        data_dir / "spice/ephem_planetary/de440.bsp"
+    ]
+    assert collection.get_file_paths(source="attitude_history") == []
 
 
 def test_download_all_files():

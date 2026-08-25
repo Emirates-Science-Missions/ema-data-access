@@ -250,7 +250,11 @@ class ProcessingInputCollection:
         output = []
         for processing_input in self.processing_input:
             match_type = input_type is None or processing_input.input_type == input_type
-            match_source = source is None or processing_input.source == source
+            match_source = source is None or (
+                source in processing_input.source
+                if isinstance(processing_input.source, list)
+                else processing_input.source == source
+            )
             match_descriptor = (
                 descriptor is None or descriptor in processing_input.descriptor
             )
