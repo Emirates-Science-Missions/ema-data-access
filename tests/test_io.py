@@ -443,6 +443,33 @@ def test_query_compact_dates_sent_dashed(mock_send_request):
     }
 
 
+def test_query_spice_compact_dates_sent_dashed(mock_send_request):
+    """Test that YYYYMMDD spice date filters reach the API as YYYY-MM-DD.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = []
+    mock_send_request.return_value = mock_response
+
+    ema_data_access.query_spice(
+        min_date_datetime="20240101",
+        delivery_date_start="20240101",
+        delivery_date_end="20240102",
+    )
+
+    sent_request = mock_send_request.call_args[0][0]
+    called_params = parse_qs(urlparse(sent_request.url).query)
+    assert called_params == {
+        "min_date_datetime": ["2024-01-01"],
+        "delivery_date_start": ["2024-01-01"],
+        "delivery_date_end": ["2024-01-02"],
+    }
+
+
 def test_query_manifest_bad_params(mock_send_request):
     """Test a call to query_manifest with an invalid parameter.
 
@@ -468,7 +495,8 @@ def test_query_manifest_bad_params(mock_send_request):
             "max_date_j2000": 2.0,
             "min_date_datetime": "2024-01-01T00:00:00",
             "max_date_datetime": "2024-01-02T00:00:00",
-            "delivery_date": "2024-01-01T00:00:00",
+            "delivery_date_start": "2024-01-01T00:00:00",
+            "delivery_date_end": "2024-01-02T00:00:00",
             "od_number": 1,
             "version": 12,
             "limit": 50,

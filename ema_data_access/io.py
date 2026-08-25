@@ -388,7 +388,8 @@ def query_spice(  # noqa: PLR0913
     max_date_j2000: float | None = None,
     min_date_datetime: str | None = None,
     max_date_datetime: str | None = None,
-    delivery_date: str | None = None,
+    delivery_date_start: str | None = None,
+    delivery_date_end: str | None = None,
     od_number: int | None = None,
     version: int | None = None,
     limit: int | None = None,
@@ -406,11 +407,15 @@ def query_spice(  # noqa: PLR0913
     max_date_j2000 : float, optional
         Maximum date to match, in J2000 format.
     min_date_datetime : str, optional
-        Minimum date to match, as an ISO 8601 datetime string.
+        Minimum date to match, in YYYYMMDD or YYYY-MM-DD format.
     max_date_datetime : str, optional
-        Maximum date to match, as an ISO 8601 datetime string.
-    delivery_date : str, optional
-        Exact delivery date to match, as an ISO 8601 datetime string.
+        Maximum date to match, in YYYYMMDD or YYYY-MM-DD format.
+    delivery_date_start : str, optional
+        Only include files delivered on or after this, in YYYYMMDD or
+        YYYY-MM-DD format.
+    delivery_date_end : str, optional
+        Only include files delivered on or before this, in YYYYMMDD or
+        YYYY-MM-DD format.
     od_number : int, optional
         OD number to match.
     version : int, optional
@@ -430,9 +435,10 @@ def query_spice(  # noqa: PLR0913
         "file_root": file_root,
         "min_date_j2000": min_date_j2000,
         "max_date_j2000": max_date_j2000,
-        "min_date_datetime": min_date_datetime,
-        "max_date_datetime": max_date_datetime,
-        "delivery_date": delivery_date,
+        "min_date_datetime": _normalize_date_param(min_date_datetime),
+        "max_date_datetime": _normalize_date_param(max_date_datetime),
+        "delivery_date_start": _normalize_date_param(delivery_date_start),
+        "delivery_date_end": _normalize_date_param(delivery_date_end),
         "od_number": od_number,
         "version": version,
         "limit": limit,

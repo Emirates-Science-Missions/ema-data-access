@@ -323,7 +323,8 @@ def _query_spice_parser(args: argparse.Namespace) -> None:
         max_date_j2000=args.max_date_j2000,
         min_date_datetime=args.min_date_datetime,
         max_date_datetime=args.max_date_datetime,
-        delivery_date=args.delivery_date,
+        delivery_date_start=args.delivery_date_start,
+        delivery_date_end=args.delivery_date_end,
         od_number=args.od_number,
         version=args.version,
         limit=args.limit,
@@ -356,17 +357,24 @@ def add_query_spice_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--min-date-datetime",
         type=str,
-        help="Minimum date to match, as an ISO 8601 datetime string.",
+        help="Minimum date to match, in YYYYMMDD or YYYY-MM-DD format.",
     )
     subparser.add_argument(
         "--max-date-datetime",
         type=str,
-        help="Maximum date to match, as an ISO 8601 datetime string.",
+        help="Maximum date to match, in YYYYMMDD or YYYY-MM-DD format.",
     )
     subparser.add_argument(
-        "--delivery-date",
+        "--delivery-date-start",
         type=str,
-        help="Exact delivery date to match, as an ISO 8601 datetime string.",
+        help="Only include files delivered on or after this, in YYYYMMDD "
+        "or YYYY-MM-DD format.",
+    )
+    subparser.add_argument(
+        "--delivery-date-end",
+        type=str,
+        help="Only include files delivered on or before this, in YYYYMMDD "
+        "or YYYY-MM-DD format.",
     )
     subparser.add_argument("--od-number", type=int, help="OD number to match.")
     subparser.add_argument("--version", type=int, help="File version to match.")
