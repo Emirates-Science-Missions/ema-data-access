@@ -44,6 +44,23 @@ of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
 | `science` (L1a+) | `ema_<payload>_<data_level>_<YYYYMMDDtHHMMSS>_<descriptor>_<pred_rec>_v<version>[-<subversion>].fits`, where `<pred_rec>` is `p` (predicted) or `r` (reconstructed) |
 | `mission_events` | `ema_mission_events_<start_date:YYYYMMDD>_<end_date:YYYYMMDD>.xml` |
 
+### SPICE kernel naming conventions
+
+SPICE kernels follow NAIF conventions rather than the `ema_l*_*` pattern above.
+`<start_date>`/`<end_date>` are `YYYYMMDD`. `<version>` is free-form
+alphanumeric (e.g. `v001`) for the first three conventions below, and
+digits-only for the rest.
+
+| Convention | Pattern | Example |
+| --- | --- | --- |
+| Spacecraft ephemeris | `ema_<type>_<start_date>_<end_date>_<version>.bsp`, `<type>` one of `pred`, `recon`, `ref` | `ema_recon_20240101_20240201_v001.bsp` |
+| Attitude | `ema_<type>_<start_date>_<end_date>_<version>.bc`, `<type>` one of `rck`, `pck` | `ema_rck_20240101_20240201_v001.bc` |
+| Body ephemeris | `ema_<body>_<version>.bsp`, `<body>` one of `sun`, `venus`, `earth`, `mars`, `wes`, `chi`, `roc`, `va28`, `rc76`, `sg6`, `jus` | `ema_sun_v001.bsp` |
+| Planetary ephemeris | `<type><version>.bsp`, `<type>` one of `de`, `mar` | `de440.bsp` |
+| Leapseconds | `naif<version>.tls` | `naif0012.tls` |
+| Planetary constants | `pck<version>.tpc` or `.bpc` | `pck00011.tpc` |
+| Spacecraft clock / frames | `ema_<type>_<version>.tsc` or `.tf`, `<type>` one of `sclk`, `fk` | `ema_sclk_0012.tsc` |
+
 ## Command Line Utility
 
 ### Query the ancillary table
