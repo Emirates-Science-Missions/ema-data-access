@@ -1,11 +1,4 @@
-"""Classes for abstracting and organizing collections of input files.
-
-Mirrors the design of `imap_data_access.processing_input`: a `ProcessingInput`
-describes a group of same-kind files, and a `ProcessingInputCollection`
-bundles several `ProcessingInput`s together and can serialize/deserialize
-that bundle to/from JSON so it can be passed between processes (e.g. handed
-to a downstream processing job as its list of dependencies).
-"""
+"""Classes for abstracting and organizing collections of input files."""
 
 from __future__ import annotations
 
