@@ -169,10 +169,13 @@ Under the hood, this requests a presigned upload URL and then PUTs the file
 to it, equivalent to:
 
 ```bash
-$ curl -X POST -H "x-api-key: $EMA_API_KEY" <url>/upload/ema_l1_anc_sc_1234_20240101.csv
-# => {"upload_url": "<presigned-url>"}
-$ curl -X PUT -T path/to/ema_l1_anc_sc_1234_20240101.csv "<presigned-url>"
+$ RESPONSE=$(curl -s -X POST -H "x-api-key: $EMA_API_KEY" <url>/upload/ema_l1_anc_sc_1234_20240101.csv)
+$ UPLOAD_URL=$(echo "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin)['upload_url'])")
+$ curl -X PUT -H "Content-Type:" -T path/to/ema_l1_anc_sc_1234_20240101.csv "$UPLOAD_URL"
 ```
+
+The `-H "Content-Type:"` (empty) is required — the presigned URL isn't signed with a
+content-type, and curl's guessed one will cause a signature mismatch against S3.
 
 ### Download a file
 
