@@ -3,8 +3,8 @@ requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "ema-data-access"
-version = "0.6.0"
+name = "eta-data-access"
+version = "0.7.0"
 description = "EMA Data Access"
 authors = ["EMA PDC Developers"]
 readme = "README.md"
