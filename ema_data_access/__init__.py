@@ -20,7 +20,10 @@ from ema_data_access.file_validation import (
 from ema_data_access.io import (
     download,
     query_ancillary,
+    query_housekeeping,
     query_manifest,
+    query_mission_events,
+    query_science,
     query_spice,
     upload,
 )
@@ -43,7 +46,10 @@ __all__ = [
     "ScienceFilePath",
     "download",
     "query_ancillary",
+    "query_housekeeping",
     "query_manifest",
+    "query_mission_events",
+    "query_science",
     "query_spice",
     "upload",
 ]

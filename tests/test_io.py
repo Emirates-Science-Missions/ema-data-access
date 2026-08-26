@@ -7,7 +7,11 @@ import pytest
 import requests
 
 import ema_data_access
-from ema_data_access.io import EmaDataAccessError, _get_base_url
+from ema_data_access.io import (
+    EmaDataAccessError,
+    _get_base_url,
+    _normalize_date_param,
+)
 
 
 def test_base_url(monkeypatch):
@@ -143,10 +147,203 @@ def test_query_ancillary_bad_params(mock_send_request):
     [
         # All parameters should send full query
         {
+            "file_name": "ema_l0_hsk_mst_20240101.pkts",
+            "payload": "mst",
+            "timetag_start": "2024-01-01",
+            "timetag_end": "2024-01-02",
+            "version": 1,
+            "md5checksum": "abc123",
+        },
+        # Make sure not all query params are sent if they are missing
+        {"payload": "mst"},
+        # No parameters at all
+        {},
+    ],
+)
+def test_query_housekeeping(mock_send_request, query_params: dict):
+    """Test a basic call to the housekeeping Query API.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    query_params : dict
+        Dictionary of key/value pairs that set the query parameters
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = []
+    mock_send_request.return_value = mock_response
+
+    response = ema_data_access.query_housekeeping(**query_params)
+    # No data found, and JSON decoding works as expected
+    assert response == list()
+
+    # Should have only been one call to send
+    mock_send_request.assert_called_once()
+    # Assert that the correct URL and query parameters were used
+    sent_request = mock_send_request.call_args[0][0]
+    called_url = urlparse(sent_request.url)
+    assert f"{called_url.scheme}://{called_url.netloc}{called_url.path}" == (
+        "https://api.test.com/query_housekeeping"
+    )
+    called_params = parse_qs(called_url.query)
+    expected_params = {k: [str(v)] for k, v in query_params.items()}
+    assert called_params == expected_params
+
+
+def test_query_housekeeping_bad_params(mock_send_request):
+    """Test a call to query_housekeeping with an invalid parameter.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.session``
+    """
+    with pytest.raises(TypeError, match="got an unexpected"):
+        ema_data_access.query_housekeeping(bad_param="test")
+    # Should not have made any calls to send
+    assert mock_send_request.call_count == 0
+
+
+@pytest.mark.parametrize(
+    "query_params",
+    [
+        # All parameters should send full query
+        {
+            "file_name": "ema_rpt_l1a_20240101t000000_flux_p_v01-00.cdf",
+            "payload": "rpt",
+            "data_level": "l1a",
+            "timetag_start": "2024-01-01",
+            "timetag_end": "2024-01-02",
+            "descriptor": "flux",
+            "pred_rec": "p",
+            "file_extension": "cdf",
+            "major_version": 1,
+            "minor_version": 0,
+            "md5checksum": "abc123",
+        },
+        # Make sure not all query params are sent if they are missing
+        {"data_level": "l1a"},
+        # No parameters at all
+        {},
+    ],
+)
+def test_query_science(mock_send_request, query_params: dict):
+    """Test a basic call to the science Query API.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    query_params : dict
+        Dictionary of key/value pairs that set the query parameters
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = []
+    mock_send_request.return_value = mock_response
+
+    response = ema_data_access.query_science(**query_params)
+    # No data found, and JSON decoding works as expected
+    assert response == list()
+
+    # Should have only been one call to send
+    mock_send_request.assert_called_once()
+    # Assert that the correct URL and query parameters were used
+    sent_request = mock_send_request.call_args[0][0]
+    called_url = urlparse(sent_request.url)
+    assert f"{called_url.scheme}://{called_url.netloc}{called_url.path}" == (
+        "https://api.test.com/query_science"
+    )
+    called_params = parse_qs(called_url.query)
+    expected_params = {k: [str(v)] for k, v in query_params.items()}
+    assert called_params == expected_params
+
+
+def test_query_science_bad_params(mock_send_request):
+    """Test a call to query_science with an invalid parameter.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.session``
+    """
+    with pytest.raises(TypeError, match="got an unexpected"):
+        ema_data_access.query_science(bad_param="test")
+    # Should not have made any calls to send
+    assert mock_send_request.call_count == 0
+
+
+@pytest.mark.parametrize(
+    "query_params",
+    [
+        # All parameters should send full query
+        {
+            "file_name": "ema_mission_events_20240101_20240110.xml",
+            "start_date": "2024-01-01",
+            "end_date": "2024-01-10",
+            "version": 1,
+            "md5checksum": "abc123",
+        },
+        # Make sure not all query params are sent if they are missing
+        {"start_date": "2024-01-01"},
+        # No parameters at all
+        {},
+    ],
+)
+def test_query_mission_events(mock_send_request, query_params: dict):
+    """Test a basic call to the mission_events Query API.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    query_params : dict
+        Dictionary of key/value pairs that set the query parameters
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = []
+    mock_send_request.return_value = mock_response
+
+    response = ema_data_access.query_mission_events(**query_params)
+    # No data found, and JSON decoding works as expected
+    assert response == list()
+
+    # Should have only been one call to send
+    mock_send_request.assert_called_once()
+    # Assert that the correct URL and query parameters were used
+    sent_request = mock_send_request.call_args[0][0]
+    called_url = urlparse(sent_request.url)
+    assert f"{called_url.scheme}://{called_url.netloc}{called_url.path}" == (
+        "https://api.test.com/query_mission_events"
+    )
+    called_params = parse_qs(called_url.query)
+    expected_params = {k: [str(v)] for k, v in query_params.items()}
+    assert called_params == expected_params
+
+
+def test_query_mission_events_bad_params(mock_send_request):
+    """Test a call to query_mission_events with an invalid parameter.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.session``
+    """
+    with pytest.raises(TypeError, match="got an unexpected"):
+        ema_data_access.query_mission_events(bad_param="test")
+    # Should not have made any calls to send
+    assert mock_send_request.call_count == 0
+
+
+@pytest.mark.parametrize(
+    "query_params",
+    [
+        # All parameters should send full query
+        {
             "file_name": "emb_manifest_202402020000.txt",
             "payload": "emb",
-            "timetag_start": "202401010000",
-            "timetag_end": "202401020000",
+            "timetag_start": "2024-01-01T00:00:00",
+            "timetag_end": "2024-01-02T00:00:00",
         },
         # Make sure not all query params are sent if they are missing
         {"payload": "emb"},
@@ -185,6 +382,94 @@ def test_query_manifest(mock_send_request, query_params: dict):
     assert called_params == expected_params
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("20240101", "2024-01-01"),
+        ("202401011230", "2024-01-01T12:30:00"),
+        ("2024-01-01", "2024-01-01"),
+        ("2024-01-01T12:30:00", "2024-01-01T12:30:00"),
+        (None, None),
+    ],
+)
+def test_normalize_date_param(value: str | None, expected: str | None):
+    """Test compact date conversion and dashed/None pass-through.
+
+    Parameters
+    ----------
+    value : str or None
+        The date filter value as a caller would give it.
+    expected : str or None
+        The value that should be sent to the API.
+    """
+    assert _normalize_date_param(value) == expected
+
+
+@pytest.mark.parametrize("value", ["20241301", "202401011261", "1234567890", "0"])
+def test_normalize_date_param_invalid(value: str):
+    """Test that invalid or ambiguous digit strings raise a clear error.
+
+    Bare digit strings would otherwise be parsed by the API as Unix epoch
+    seconds and silently filter against the wrong dates.
+
+    Parameters
+    ----------
+    value : str
+        An invalid or ambiguous date filter value.
+    """
+    with pytest.raises(EmaDataAccessError, match="date"):
+        _normalize_date_param(value)
+
+
+def test_query_compact_dates_sent_dashed(mock_send_request):
+    """Test that YYYYMMDD filter values reach the API as YYYY-MM-DD.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = []
+    mock_send_request.return_value = mock_response
+
+    ema_data_access.query_housekeeping(timetag_start="20240101", timetag_end="20240102")
+
+    sent_request = mock_send_request.call_args[0][0]
+    called_params = parse_qs(urlparse(sent_request.url).query)
+    assert called_params == {
+        "timetag_start": ["2024-01-01"],
+        "timetag_end": ["2024-01-02"],
+    }
+
+
+def test_query_spice_compact_dates_sent_dashed(mock_send_request):
+    """Test that YYYYMMDD spice date filters reach the API as YYYY-MM-DD.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = []
+    mock_send_request.return_value = mock_response
+
+    ema_data_access.query_spice(
+        min_date_datetime="20240101",
+        delivery_date_start="20240101",
+        delivery_date_end="20240102",
+    )
+
+    sent_request = mock_send_request.call_args[0][0]
+    called_params = parse_qs(urlparse(sent_request.url).query)
+    assert called_params == {
+        "min_date_datetime": ["2024-01-01"],
+        "delivery_date_start": ["2024-01-01"],
+        "delivery_date_end": ["2024-01-02"],
+    }
+
+
 def test_query_manifest_bad_params(mock_send_request):
     """Test a call to query_manifest with an invalid parameter.
 
@@ -210,7 +495,8 @@ def test_query_manifest_bad_params(mock_send_request):
             "max_date_j2000": 2.0,
             "min_date_datetime": "2024-01-01T00:00:00",
             "max_date_datetime": "2024-01-02T00:00:00",
-            "delivery_date": "2024-01-01T00:00:00",
+            "delivery_date_start": "2024-01-01T00:00:00",
+            "delivery_date_end": "2024-01-02T00:00:00",
             "od_number": 1,
             "version": 12,
             "limit": 50,

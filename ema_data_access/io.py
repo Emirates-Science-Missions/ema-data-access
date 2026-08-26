@@ -2,6 +2,7 @@
 
 import contextlib
 import logging
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
@@ -50,6 +51,43 @@ def _get_base_url() -> str:
     return ema_data_access.config["DATA_ACCESS_URL"]
 
 
+def _normalize_date_param(value: str | None) -> str | None:
+    """Convert compact date strings to dashed form for the API.
+
+    The API parses datetime query params with pydantic, which reads a bare
+    digit string as Unix epoch seconds. Compact YYYYMMDD and YYYYMMDDHHMM
+    inputs are converted to YYYY-MM-DD and YYYY-MM-DDTHH:MM:SS here so they
+    filter as the dates the caller meant. Non-digit values pass through
+    unchanged.
+
+    Parameters
+    ----------
+    value : str or None
+        The date filter value as given by the caller.
+
+    Returns
+    -------
+    str or None
+        The value to send to the API.
+    """
+    if value is None or not value.isdigit():
+        return value
+    if len(value) == 8:
+        in_format, out_format = "%Y%m%d", "%Y-%m-%d"
+    elif len(value) == 12:
+        in_format, out_format = "%Y%m%d%H%M", "%Y-%m-%dT%H:%M:%S"
+    else:
+        raise EmaDataAccessError(
+            f"Ambiguous numeric date {value!r}: use YYYYMMDD, YYYYMMDDHHMM, "
+            "or YYYY-MM-DDTHH:MM:SS."
+        )
+    try:
+        parsed = datetime.strptime(value, in_format)
+    except ValueError as e:
+        raise EmaDataAccessError(f"Invalid date {value!r}: {e}") from e
+    return parsed.strftime(out_format)
+
+
 def query_ancillary(  # noqa: PLR0913
     *,
     file_name: str | None = None,
@@ -70,11 +108,13 @@ def query_ancillary(  # noqa: PLR0913
     apid : int, optional
         APID to match.
     timetag_start : str, optional
-        Only include files with timetag on or after this, in YYYYMMDD format.
+        Only include files with timetag on or after this, in YYYYMMDD or
+        YYYY-MM-DD format.
     timetag_end : str, optional
-        Only include files with timetag on or before this, in YYYYMMDD format.
+        Only include files with timetag on or before this, in YYYYMMDD or
+        YYYY-MM-DD format.
     file_extension : str, optional
-        File extension to match, one of "csv", "fits", "pkts".
+        File extension to match, one of "csv", "fits", "cdf", "pkts".
     version : int, optional
         File version to match.
     md5checksum : str, optional
@@ -92,8 +132,8 @@ def query_ancillary(  # noqa: PLR0913
     params = {
         "file_name": file_name,
         "apid": apid,
-        "timetag_start": timetag_start,
-        "timetag_end": timetag_end,
+        "timetag_start": _normalize_date_param(timetag_start),
+        "timetag_end": _normalize_date_param(timetag_end),
         "file_extension": file_extension,
         "version": version,
         "md5checksum": md5checksum,
@@ -105,6 +145,188 @@ def query_ancillary(  # noqa: PLR0913
     request = requests.Request(method="GET", url=url, params=params).prepare()
 
     logger.info("Querying ancillary table with url %s", request.url)
+    with _make_request(request) as response:
+        items = response.json()
+        logger.debug("Received JSON: %s", items)
+
+    return items
+
+
+def query_housekeeping(  # noqa: PLR0913
+    *,
+    file_name: str | None = None,
+    payload: str | None = None,
+    timetag_start: str | None = None,
+    timetag_end: str | None = None,
+    version: int | None = None,
+    md5checksum: str | None = None,
+) -> list[dict]:
+    """Query the housekeeping table for files matching the given filters.
+
+    Parameters
+    ----------
+    file_name : str, optional
+        Exact file name to match.
+    payload : str, optional
+        Payload to match, one of "mst", "emb", "emc", "rpt", "ldr".
+    timetag_start : str, optional
+        Only include files with timetag on or after this, in YYYYMMDD or
+        YYYY-MM-DD format.
+    timetag_end : str, optional
+        Only include files with timetag on or before this, in YYYYMMDD or
+        YYYY-MM-DD format.
+    version : int, optional
+        File version to match.
+    md5checksum : str, optional
+        MD5 checksum to match.
+
+    Returns
+    -------
+    list
+        List of rows matching the query, as dicts.
+    """
+    params = {
+        "file_name": file_name,
+        "payload": payload,
+        "timetag_start": _normalize_date_param(timetag_start),
+        "timetag_end": _normalize_date_param(timetag_end),
+        "version": version,
+        "md5checksum": md5checksum,
+    }
+    params = {k: v for k, v in params.items() if v is not None}
+
+    url = f"{_get_base_url()}/query_housekeeping"
+    request = requests.Request(method="GET", url=url, params=params).prepare()
+
+    logger.info("Querying housekeeping table with url %s", request.url)
+    with _make_request(request) as response:
+        items = response.json()
+        logger.debug("Received JSON: %s", items)
+
+    return items
+
+
+def query_science(  # noqa: PLR0913
+    *,
+    file_name: str | None = None,
+    payload: str | None = None,
+    data_level: str | None = None,
+    timetag_start: str | None = None,
+    timetag_end: str | None = None,
+    descriptor: str | None = None,
+    pred_rec: str | None = None,
+    file_extension: str | None = None,
+    major_version: int | None = None,
+    minor_version: int | None = None,
+    md5checksum: str | None = None,
+) -> list[dict]:
+    """Query the science table for files matching the given filters.
+
+    Parameters
+    ----------
+    file_name : str, optional
+        Exact file name to match.
+    payload : str, optional
+        Payload to match, one of "mst", "emb", "emc", "rpt", "ldr".
+    data_level : str, optional
+        Data level to match, one of "l0", "l1", "l1a", "l1b", "l2", "l2a",
+        "l2b", "l3", "ql".
+    timetag_start : str, optional
+        Only include files with timetag on or after this, in YYYYMMDD or
+        YYYY-MM-DD format.
+    timetag_end : str, optional
+        Only include files with timetag on or before this, in YYYYMMDD or
+        YYYY-MM-DD format.
+    descriptor : str, optional
+        Descriptor to match.
+    pred_rec : str, optional
+        Predicted/reconstructed flag to match, "p" or "r".
+    file_extension : str, optional
+        File extension to match, one of "csv", "fits", "cdf", "pkts".
+    major_version : int, optional
+        Major version to match.
+    minor_version : int, optional
+        Minor version to match.
+    md5checksum : str, optional
+        MD5 checksum to match.
+
+    Returns
+    -------
+    list
+        List of rows matching the query, as dicts.
+    """
+    params = {
+        "file_name": file_name,
+        "payload": payload,
+        "data_level": data_level,
+        "timetag_start": _normalize_date_param(timetag_start),
+        "timetag_end": _normalize_date_param(timetag_end),
+        "descriptor": descriptor,
+        "pred_rec": pred_rec,
+        "file_extension": file_extension,
+        "major_version": major_version,
+        "minor_version": minor_version,
+        "md5checksum": md5checksum,
+    }
+    params = {k: v for k, v in params.items() if v is not None}
+
+    url = f"{_get_base_url()}/query_science"
+    request = requests.Request(method="GET", url=url, params=params).prepare()
+
+    logger.info("Querying science table with url %s", request.url)
+    with _make_request(request) as response:
+        items = response.json()
+        logger.debug("Received JSON: %s", items)
+
+    return items
+
+
+def query_mission_events(
+    *,
+    file_name: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    version: int | None = None,
+    md5checksum: str | None = None,
+) -> list[dict]:
+    """Query the mission_events table for files matching the given filters.
+
+    Events span a date range, so start_date and end_date define a query
+    window and any event whose own range overlaps that window is returned.
+
+    Parameters
+    ----------
+    file_name : str, optional
+        Exact file name to match.
+    start_date : str, optional
+        Start of the query window, in YYYYMMDD or YYYY-MM-DD format. Only
+        include events that end on or after this.
+    end_date : str, optional
+        End of the query window, in YYYYMMDD or YYYY-MM-DD format. Only
+        include events that start on or before this.
+    version : int, optional
+        File version to match.
+    md5checksum : str, optional
+        MD5 checksum to match.
+
+    Returns
+    -------
+    list
+        List of rows matching the query, as dicts.
+    """
+    params = {
+        "file_name": file_name,
+        "start_date": _normalize_date_param(start_date),
+        "end_date": _normalize_date_param(end_date),
+        "version": version,
+        "md5checksum": md5checksum,
+    }
+    params = {k: v for k, v in params.items() if v is not None}
+
+    url = f"{_get_base_url()}/query_mission_events"
+    request = requests.Request(method="GET", url=url, params=params).prepare()
+
+    logger.info("Querying mission_events table with url %s", request.url)
     with _make_request(request) as response:
         items = response.json()
         logger.debug("Received JSON: %s", items)
@@ -128,11 +350,11 @@ def query_manifest(
     payload : str, optional
         Payload to match, one of "mst", "emb", "emc", "rpt", "ldr", "moc".
     timetag_start : str, optional
-        Only include files with timetag on or after this, in
-        YYYYMMDDHHMM format.
+        Only include files with timetag on or after this, in YYYYMMDDHHMM
+        or YYYY-MM-DDTHH:MM:SS format.
     timetag_end : str, optional
-        Only include files with timetag on or before this, in
-        YYYYMMDDHHMM format.
+        Only include files with timetag on or before this, in YYYYMMDDHHMM
+        or YYYY-MM-DDTHH:MM:SS format.
 
     Returns
     -------
@@ -142,8 +364,8 @@ def query_manifest(
     params = {
         "file_name": file_name,
         "payload": payload,
-        "timetag_start": timetag_start,
-        "timetag_end": timetag_end,
+        "timetag_start": _normalize_date_param(timetag_start),
+        "timetag_end": _normalize_date_param(timetag_end),
     }
     params = {k: v for k, v in params.items() if v is not None}
 
@@ -166,7 +388,8 @@ def query_spice(  # noqa: PLR0913
     max_date_j2000: float | None = None,
     min_date_datetime: str | None = None,
     max_date_datetime: str | None = None,
-    delivery_date: str | None = None,
+    delivery_date_start: str | None = None,
+    delivery_date_end: str | None = None,
     od_number: int | None = None,
     version: int | None = None,
     limit: int | None = None,
@@ -184,11 +407,15 @@ def query_spice(  # noqa: PLR0913
     max_date_j2000 : float, optional
         Maximum date to match, in J2000 format.
     min_date_datetime : str, optional
-        Minimum date to match, as an ISO 8601 datetime string.
+        Minimum date to match, in YYYYMMDD or YYYY-MM-DD format.
     max_date_datetime : str, optional
-        Maximum date to match, as an ISO 8601 datetime string.
-    delivery_date : str, optional
-        Exact delivery date to match, as an ISO 8601 datetime string.
+        Maximum date to match, in YYYYMMDD or YYYY-MM-DD format.
+    delivery_date_start : str, optional
+        Only include files delivered on or after this, in YYYYMMDD or
+        YYYY-MM-DD format.
+    delivery_date_end : str, optional
+        Only include files delivered on or before this, in YYYYMMDD or
+        YYYY-MM-DD format.
     od_number : int, optional
         OD number to match.
     version : int, optional
@@ -208,9 +435,10 @@ def query_spice(  # noqa: PLR0913
         "file_root": file_root,
         "min_date_j2000": min_date_j2000,
         "max_date_j2000": max_date_j2000,
-        "min_date_datetime": min_date_datetime,
-        "max_date_datetime": max_date_datetime,
-        "delivery_date": delivery_date,
+        "min_date_datetime": _normalize_date_param(min_date_datetime),
+        "max_date_datetime": _normalize_date_param(max_date_datetime),
+        "delivery_date_start": _normalize_date_param(delivery_date_start),
+        "delivery_date_end": _normalize_date_param(delivery_date_end),
         "od_number": od_number,
         "version": version,
         "limit": limit,

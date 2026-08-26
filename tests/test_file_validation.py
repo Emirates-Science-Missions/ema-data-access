@@ -158,6 +158,27 @@ def test_science_file_path_l1a():
     )
 
 
+def test_science_file_path_l1a_requires_subversion():
+    """Test that an L1a+ name without a subversion is rejected.
+
+    The ICD format is vNN-NN, so the subversion is mandatory.
+    """
+    with pytest.raises(InvalidEmaFileError):
+        ScienceFilePath.from_filename(
+            "ema_emb_l1a_20321207t122030_observing-mode-info_p_v01.fits"
+        )
+
+
+def test_science_file_path_l1a_major_version_zero():
+    """Test that a v00-NN pre-deployment version parses, with major 0."""
+    parsed = ScienceFilePath.from_filename(
+        "ema_emb_l1a_20321207t122030_observing-mode-info_p_v00-03.fits"
+    )
+
+    assert parsed.version == 0
+    assert parsed.subversion == 3
+
+
 def test_science_file_path_invalid():
     """Test that a filename matching neither science pattern is rejected."""
     with pytest.raises(InvalidEmaFileError, match="ScienceFilePath"):
