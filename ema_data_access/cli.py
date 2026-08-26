@@ -16,6 +16,7 @@ Use
     ema-data-access query-mission-events --start-date 20240101 --end-date 20240110
     ema-data-access query-manifest --payload emb
     ema-data-access query-spice --file-root naif
+    ema-data-access metakernel --start-time 0 --end-time 100000 --list-files
     ema-data-access upload path/to/ema_l1_anc_sc_1234_20240101.csv
     ema-data-access download ema_l1_anc_sc_1234_20240101.csv
 """
@@ -386,6 +387,66 @@ def add_query_spice_args(subparser: ArgumentParser) -> None:
     subparser.set_defaults(func=_query_spice_parser)
 
 
+def _metakernel_parser(args: argparse.Namespace) -> None:
+    """Build a SPICE metakernel for the given window.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        An object containing the parsed arguments and their values.
+    """
+    result = ema_data_access.metakernel(
+        start_time=args.start_time,
+        end_time=args.end_time,
+        kernel_types=args.kernel_types,
+        list_files=args.list_files,
+        require_coverage=args.require_coverage,
+    )
+    if args.list_files:
+        print(json.dumps(result, indent=2))
+    else:
+        print(result)
+
+
+def add_metakernel_args(subparser: ArgumentParser) -> None:
+    """Add metakernel arguments to a subparser.
+
+    Parameters
+    ----------
+    subparser : argparse.ArgumentParser
+        A subparser to add the metakernel arguments to.
+    """
+    subparser.add_argument(
+        "--start-time",
+        type=float,
+        required=True,
+        help="Start of the coverage window, in seconds past J2000.",
+    )
+    subparser.add_argument(
+        "--end-time",
+        type=float,
+        required=True,
+        help="End of the coverage window, in seconds past J2000.",
+    )
+    subparser.add_argument(
+        "--kernel-types",
+        type=str,
+        help="Comma-separated kernel_type names to restrict the metakernel to.",
+    )
+    subparser.add_argument(
+        "--list-files",
+        action="store_true",
+        help="Return the list of file names instead of metakernel text.",
+    )
+    subparser.add_argument(
+        "--require-coverage",
+        action="store_true",
+        help="Error instead of returning a partial metakernel if the window "
+        "isn't fully covered.",
+    )
+    subparser.set_defaults(func=_metakernel_parser)
+
+
 def _upload_parser(args: argparse.Namespace) -> None:
     """Upload a file to the EMA PDC data archive.
 
@@ -478,6 +539,9 @@ def main():
 
     query_spice_parser = subparsers.add_parser("query-spice")
     add_query_spice_args(query_spice_parser)
+
+    metakernel_parser = subparsers.add_parser("metakernel")
+    add_metakernel_args(metakernel_parser)
 
     upload_parser = subparsers.add_parser("upload")
     add_upload_args(upload_parser)
