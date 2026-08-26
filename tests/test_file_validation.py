@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+import ema_data_access
 from ema_data_access.file_validation import (
     AncillaryFilePath,
     HousekeepingFilePath,
@@ -29,7 +30,9 @@ def test_ancillary_file_path():
         "timetag": datetime(2024, 1, 15, tzinfo=UTC),
         "file_extension": "csv",
     }
-    assert parsed.construct_path() == "ancillary/ema_l1_anc_sc_123_20240115.csv"
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "ancillary/ema_l1_anc_sc_123_20240115.csv"
+    )
 
 
 @pytest.mark.parametrize(
@@ -68,7 +71,9 @@ def test_manifest_file_path(filename: str, payload: str):
 
     assert parsed.payload == payload
     assert parsed.timetag == datetime(2024, 1, 15, 12, 30, tzinfo=UTC)
-    assert parsed.construct_path() == f"manifest/{payload}/{filename}"
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        f"manifest/{payload}/{filename}"
+    )
 
 
 def test_manifest_file_path_invalid_payload():
@@ -88,7 +93,9 @@ def test_housekeeping_file_path():
         "payload": "emb",
         "timetag": datetime(2024, 1, 15, tzinfo=UTC),
     }
-    assert parsed.construct_path() == ("housekeeping/emb/ema_l0_hsk_emb_20240115.pkts")
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "housekeeping/emb/ema_l0_hsk_emb_20240115.pkts"
+    )
 
 
 def test_housekeeping_file_path_invalid_payload():
@@ -117,7 +124,9 @@ def test_science_file_path_l0():
     assert parsed.version is None
     assert parsed.subversion is None
     assert parsed.file_extension == "pkts"
-    assert parsed.construct_path() == "science/emb/l0/ema_l0_sci_emb_20240115.pkts"
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "science/emb/l0/ema_l0_sci_emb_20240115.pkts"
+    )
 
 
 def test_science_file_path_l1a():
@@ -144,7 +153,9 @@ def test_science_file_path_l1a():
         "subversion": 1,
         "file_extension": "fits",
     }
-    assert parsed.construct_path() == f"science/emb/l1a/{filename}"
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        f"science/emb/l1a/{filename}"
+    )
 
 
 def test_science_file_path_l1a_requires_subversion():
@@ -191,7 +202,7 @@ def test_mission_events_file_path():
 
     assert parsed.start_date == datetime(2024, 1, 1, tzinfo=UTC)
     assert parsed.end_date == datetime(2024, 1, 31, tzinfo=UTC)
-    assert parsed.construct_path() == (
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
         "mission_events/ema_mission_events_20240101_20240131.xml"
     )
 
@@ -210,41 +221,55 @@ def test_spice_file_path():
     """Tests the ``SPICEFilePath`` class."""
     # Spacecraft ephemeris: predicted/reconstructed/reference
     file_path = SPICEFilePath("ema_recon_20240101_20240115_v001.bsp")
-    assert file_path.construct_path() == (
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
         "spice/ephem_reconstructed/ema_recon_20240101_20240115_v001.bsp"
     )
 
     # GSINT-224 Asteroid Ephemeris: one file per body
     file_path = SPICEFilePath("ema_sun_v001.bsp")
-    assert file_path.construct_path() == "spice/ephem_sun/ema_sun_v001.bsp"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/ephem_sun/ema_sun_v001.bsp"
+    )
 
     # Standard NAIF DE-series Planetary Ephemeris -- no "ema_" prefix
     file_path = SPICEFilePath("de440.bsp")
-    assert file_path.construct_path() == "spice/ephem_planetary/de440.bsp"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/ephem_planetary/de440.bsp"
+    )
 
     # Standard NAIF Mars System Ephemeris
     file_path = SPICEFilePath("mar097.bsp")
-    assert file_path.construct_path() == "spice/ephem_mars_system/mar097.bsp"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/ephem_mars_system/mar097.bsp"
+    )
 
     # Standard NAIF leapseconds / planetary constants conventions
     file_path = SPICEFilePath("naif0012.tls")
-    assert file_path.construct_path() == "spice/leapseconds/naif0012.tls"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/leapseconds/naif0012.tls"
+    )
     file_path = SPICEFilePath("pck00011.tpc")
-    assert file_path.construct_path() == "spice/planetary_constants/pck00011.tpc"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/planetary_constants/pck00011.tpc"
+    )
 
     # EMA spacecraft clock / frames -- "vvv" is the version number
     file_path = SPICEFilePath("ema_sclk_001.tsc")
-    assert file_path.construct_path() == "spice/spacecraft_clock/ema_sclk_001.tsc"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/spacecraft_clock/ema_sclk_001.tsc"
+    )
     file_path = SPICEFilePath("ema_fk_001.tf")
-    assert file_path.construct_path() == "spice/frames/ema_fk_001.tf"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/frames/ema_fk_001.tf"
+    )
 
     # Observatory attitude reconstructed/predicted
     file_path = SPICEFilePath("ema_rck_20240101_20240115_v001.bc")
-    assert file_path.construct_path() == (
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
         "spice/attitude_reconstructed/ema_rck_20240101_20240115_v001.bc"
     )
     file_path = SPICEFilePath("ema_pck_20240101_20240115_v001.bc")
-    assert file_path.construct_path() == (
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
         "spice/attitude_predicted/ema_pck_20240101_20240115_v001.bc"
     )
 
@@ -351,7 +376,9 @@ def test_spice_extract_binary_planetary_constants_parts():
     assert file_path.spice_metadata["kernel_type"] == "planetary_constants"
     assert file_path.spice_metadata["file_root"] == "pck"
     assert len(file_path.spice_metadata) == 5
-    assert file_path.construct_path() == "spice/planetary_constants/pck00011.bpc"
+    assert file_path.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        "spice/planetary_constants/pck00011.bpc"
+    )
 
 
 @pytest.mark.parametrize(
@@ -441,7 +468,7 @@ def test_spice_file_path_unknown_extension():
         ),
         ("ema_mission_events_20240101_20240131.xml", MissionEventsFilePath),
         ("moc_manifest_202401151230.txt", ManifestFilePath),
-        ("ema_sclk_001.tsc", SPICEFilePath),
+        ("ema_sclk_00001.tsc", SPICEFilePath),
     ],
 )
 def test_generate_ema_file_path(filename: str, expected_type: type):
