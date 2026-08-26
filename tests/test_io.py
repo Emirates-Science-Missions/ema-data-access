@@ -552,6 +552,89 @@ def test_query_spice_bad_params(mock_send_request):
     assert mock_send_request.call_count == 0
 
 
+def test_metakernel_text(mock_send_request):
+    """Test a basic metakernel call returns the plain-text body.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    """
+    mock_response = MagicMock()
+    mock_response.text = "\\begindata\nKERNELS_TO_LOAD = ( )\n\\begintext\n"
+    mock_send_request.return_value = mock_response
+
+    response = ema_data_access.metakernel(start_time=0, end_time=100000)
+    assert response == mock_response.text
+    # A plain-text response should never be parsed as JSON
+    mock_response.json.assert_not_called()
+
+    mock_send_request.assert_called_once()
+    sent_request = mock_send_request.call_args[0][0]
+    called_url = urlparse(sent_request.url)
+    assert f"{called_url.scheme}://{called_url.netloc}{called_url.path}" == (
+        "https://api.test.com/metakernel"
+    )
+    called_params = parse_qs(called_url.query)
+    assert called_params == {"start_time": ["0"], "end_time": ["100000"]}
+
+
+def test_metakernel_list_files(mock_send_request):
+    """Test that list_files=True returns JSON and is included as a query param.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = ["ema_pred_v001.bsp", "ema_recon_v001.bsp"]
+    mock_send_request.return_value = mock_response
+
+    response = ema_data_access.metakernel(
+        start_time=0,
+        end_time=100000,
+        kernel_types="ephem_reconstructed,ephem_predicted",
+        list_files=True,
+    )
+    assert response == ["ema_pred_v001.bsp", "ema_recon_v001.bsp"]
+
+    sent_request = mock_send_request.call_args[0][0]
+    called_params = parse_qs(urlparse(sent_request.url).query)
+    assert called_params == {
+        "start_time": ["0"],
+        "end_time": ["100000"],
+        "kernel_types": ["ephem_reconstructed,ephem_predicted"],
+        "list_files": ["True"],
+    }
+
+
+def test_metakernel_require_coverage_error(mock_send_request):
+    """Test that an incomplete window with require_coverage=True raises.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    """
+    mock_response = MagicMock()
+    mock_response.status_code = 422
+    mock_response.reason = "Unprocessable Entity"
+    mock_response.text = (
+        '{"detail": {"spacecraft_ephemeris_category": [[100000, 200000]]}}'
+    )
+    mock_send_request.side_effect = requests.exceptions.HTTPError(
+        response=mock_response
+    )
+
+    with pytest.raises(EmaDataAccessError, match="422 Unprocessable Entity"):
+        ema_data_access.metakernel(start_time=0, end_time=200000, require_coverage=True)
+
+    sent_request = mock_send_request.call_args.args[0]
+    called_params = parse_qs(urlparse(sent_request.url).query)
+    assert called_params["require_coverage"] == ["True"]
+
+
 @pytest.mark.parametrize("as_str", [False, True], ids=["path", "str"])
 @pytest.mark.parametrize(
     ("api_key", "expected_header"),

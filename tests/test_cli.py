@@ -203,3 +203,61 @@ def test_cli_query_manifest_moc(capsys):
         timetag_end=None,
     )
     assert "moc_manifest_202401151230.txt" in capsys.readouterr().out
+
+
+def test_cli_metakernel(capsys):
+    """Test that 'metakernel' calls ema_data_access.metakernel()."""
+    with patch.object(
+        sys,
+        "argv",
+        ["ema-data-access", "metakernel", "--start-time", "0", "--end-time", "100000"],
+    ):
+        with patch.object(
+            ema_data_access,
+            "metakernel",
+            return_value="\\begindata\nKERNELS_TO_LOAD = ( )\n\\begintext\n",
+        ) as mock_metakernel:
+            main()
+
+    mock_metakernel.assert_called_once_with(
+        start_time=0.0,
+        end_time=100000.0,
+        kernel_types=None,
+        list_files=False,
+        require_coverage=False,
+    )
+    assert "KERNELS_TO_LOAD" in capsys.readouterr().out
+
+
+def test_cli_metakernel_list_files(capsys):
+    """Test that 'metakernel --list-files' prints JSON instead of plain text."""
+    with patch.object(
+        sys,
+        "argv",
+        [
+            "ema-data-access",
+            "metakernel",
+            "--start-time",
+            "0",
+            "--end-time",
+            "100000",
+            "--kernel-types",
+            "ephem_reconstructed,ephem_predicted",
+            "--list-files",
+        ],
+    ):
+        with patch.object(
+            ema_data_access,
+            "metakernel",
+            return_value=["ema_pred_v001.bsp", "ema_recon_v001.bsp"],
+        ) as mock_metakernel:
+            main()
+
+    mock_metakernel.assert_called_once_with(
+        start_time=0.0,
+        end_time=100000.0,
+        kernel_types="ephem_reconstructed,ephem_predicted",
+        list_files=True,
+        require_coverage=False,
+    )
+    assert "ema_pred_v001.bsp" in capsys.readouterr().out

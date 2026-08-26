@@ -456,6 +456,65 @@ def query_spice(  # noqa: PLR0913
     return items
 
 
+def metakernel(
+    *,
+    start_time: float,
+    end_time: float,
+    kernel_types: str | None = None,
+    list_files: bool = False,
+    require_coverage: bool = False,
+) -> list[str] | str:
+    """Build a SPICE metakernel covering [start_time, end_time].
+
+    Parameters
+    ----------
+    start_time : float
+        Start of the coverage window, in seconds past J2000.
+    end_time : float
+        End of the coverage window, in seconds past J2000.
+    kernel_types : str, optional
+        Comma-separated `kernel_type` names (e.g.
+        "ephem_reconstructed,ephem_predicted") to restrict the metakernel
+        to. Defaults to every kernel type EMA knows about.
+    list_files : bool, optional
+        If true, return the list of file names instead of metakernel text.
+    require_coverage : bool, optional
+        If true, raise `EmaDataAccessError` (422) with the remaining gaps
+        instead of returning a partial metakernel when the window isn't
+        fully covered.
+
+    Returns
+    -------
+    list or str
+        The ordered list of file names if `list_files` is true; otherwise
+        the metakernel file contents as plain text.
+
+    Raises
+    ------
+    EmaDataAccessError
+        404 if `list_files` is true and no files matched; 422 if
+        `require_coverage` is true and the window isn't fully covered.
+    """
+    params = {"start_time": start_time, "end_time": end_time}
+    if kernel_types is not None:
+        params["kernel_types"] = kernel_types
+    if list_files:
+        params["list_files"] = list_files
+    if require_coverage:
+        params["require_coverage"] = require_coverage
+
+    url = f"{_get_base_url()}/metakernel"
+    request = requests.Request(method="GET", url=url, params=params).prepare()
+
+    logger.info("Requesting metakernel with url %s", request.url)
+    with _make_request(request) as response:
+        if list_files:
+            items = response.json()
+            logger.debug("Received JSON: %s", items)
+            return items
+        return response.text
+
+
 def download(file_name: str, destination: Path | str | None = None) -> Path:
     """Download a file from the EMA data archive.
 

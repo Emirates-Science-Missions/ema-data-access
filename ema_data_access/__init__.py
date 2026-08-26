@@ -19,6 +19,7 @@ from ema_data_access.file_validation import (
 )
 from ema_data_access.io import (
     download,
+    metakernel,
     query_ancillary,
     query_housekeeping,
     query_manifest,
@@ -45,6 +46,7 @@ __all__ = [
     "SPICESource",
     "ScienceFilePath",
     "download",
+    "metakernel",
     "query_ancillary",
     "query_housekeeping",
     "query_manifest",
