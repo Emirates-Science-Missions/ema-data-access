@@ -94,7 +94,7 @@ def test_housekeeping_file_path():
         "timetag": datetime(2024, 1, 15, tzinfo=UTC),
     }
     assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
-        "housekeeping/emb/ema_l0_hsk_emb_20240115.pkts"
+        "housekeeping/emb/2024/01/ema_l0_hsk_emb_20240115.pkts"
     )
 
 
@@ -125,7 +125,7 @@ def test_science_file_path_l0():
     assert parsed.subversion is None
     assert parsed.file_extension == "pkts"
     assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
-        "science/emb/l0/ema_l0_sci_emb_20240115.pkts"
+        "science/emb/l0/2024/01/ema_l0_sci_emb_20240115.pkts"
     )
 
 
@@ -154,7 +154,7 @@ def test_science_file_path_l1a():
         "file_extension": "fits",
     }
     assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
-        f"science/emb/l1a/{filename}"
+        f"science/emb/l1a/2032/12/{filename}"
     )
 
 

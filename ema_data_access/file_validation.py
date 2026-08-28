@@ -199,7 +199,7 @@ class HousekeepingFilePath(EmaFilePath):
         """See base class."""
         return (
             ema_data_access.config["DATA_DIR"]
-            / f"housekeeping/{self.payload}/{self.filename}"
+            / f"housekeeping/{self.payload}/{self.timetag:%Y/%m}/{self.filename}"
         )
 
 
@@ -295,7 +295,9 @@ class ScienceFilePath(EmaFilePath):
         """See base class."""
         return (
             ema_data_access.config["DATA_DIR"]
-            / f"science/{self.payload}/{self.data_level}/{self.filename}"
+            / f"science/{self.payload}/{self.data_level}/{self.timetag:%Y/%m}/{
+                self.filename
+            }"
         )
 
 
