@@ -27,6 +27,24 @@ Lightweight Python tools to query and access EMA data.
    poetry run pre-commit install
    ```
 
+### Python environment (pip)
+
+1. Create a virtual environment in the project directory:
+   ```
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+2. Install the package, with the `dev`/`test` extras, from this checkout:
+   ```
+   pip install -e ".[dev,test]"
+   ```
+
+3. Install pre-commit hooks:
+   ```
+   pre-commit install
+   ```
+
 ## File naming conventions
 
 Every file in the EMA archive must match one of the naming conventions
@@ -166,6 +184,73 @@ Under the hood, this is equivalent to:
 $ curl "<url>/query_manifest?payload=emb"
 ```
 
+### Query the spice table
+
+Query the spice table for kernel files matching a set of filters. An API key
+is optional, but not needed in practice — SPICE kernels are always
+`released`.
+
+```bash
+$ ema-data-access --url <url> query-spice --file-root naif
+```
+
+Other available filters: `--file-name`, `--min-date-j2000`,
+`--max-date-j2000`, `--min-date-datetime`, `--max-date-datetime`,
+`--delivery-date-start`, `--delivery-date-end`, `--od-number`, `--version`,
+`--limit`. Results are returned as JSON.
+
+Under the hood, this is equivalent to:
+
+```bash
+$ curl "<url>/query_spice?file_root=naif"
+```
+
+### Build a SPICE metakernel
+
+Build a metakernel covering a time window, given in seconds past J2000.
+
+```bash
+$ ema-data-access --url <url> metakernel --start-time 0 --end-time 100000 > mission.tm
+```
+
+Other available options: `--kernel-types` (comma-separated `kernel_type`
+names, e.g. `ephem_reconstructed,ephem_predicted`) to restrict which kernels
+are included, `--list-files` to get the file names instead of metakernel
+text, and `--require-coverage` to error instead of returning a partial
+metakernel if the window isn't fully covered.
+
+Under the hood, this is equivalent to:
+
+```bash
+$ curl "<url>/metakernel?start_time=0&end_time=100000" -o mission.tm
+```
+
+### Download the kernels and furnish the metakernel
+
+A metakernel only lists kernel file names — it doesn't bundle the kernels
+themselves. Download every file it references into the same directory as the
+metakernel, then furnish it with
+[SpiceyPy](https://github.com/AndrewAnnex/SpiceyPy). SPICE kernels are always
+released, so no API key is required.
+
+```python
+import ema_data_access
+import spiceypy
+
+start_time, end_time = 0, 100000
+kernel_dir = "kernels"
+
+for file_name in ema_data_access.metakernel(
+    start_time=start_time, end_time=end_time, list_files=True
+):
+    ema_data_access.download(file_name, destination=kernel_dir)
+
+with open(f"{kernel_dir}/mission.tm", "w") as f:
+    f.write(ema_data_access.metakernel(start_time=start_time, end_time=end_time))
+
+spiceypy.furnsh(f"{kernel_dir}/mission.tm")
+```
+
 ### Upload a file
 
 Upload a local file to the EMA data archive. The file name must match a
@@ -243,6 +328,8 @@ results = ema_data_access.query_mission_events(
 )
 
 results = ema_data_access.query_manifest(payload="emb")
+
+results = ema_data_access.query_spice(file_root="naif")
 
 ema_data_access.upload("path/to/ema_l1_anc_sc_1234_20240101.csv")
 
