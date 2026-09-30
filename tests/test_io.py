@@ -1,5 +1,6 @@
 """Tests for the ``io`` module."""
 
+import json
 from unittest.mock import MagicMock
 from urllib.parse import parse_qs, urlparse
 
@@ -675,7 +676,13 @@ def test_upload(  # noqa: PLR0913
 
     mock_presign_response = MagicMock()
     mock_presign_response.json.return_value = {
-        "upload_url": "https://s3.example.com/presigned"
+        "results": [
+            {
+                "filename": file_path.name,
+                "status_code": 200,
+                "upload_url": "https://s3.example.com/presigned",
+            }
+        ]
     }
     mock_put_response = MagicMock()
     mock_send_request.side_effect = [mock_presign_response, mock_put_response]
@@ -686,10 +693,9 @@ def test_upload(  # noqa: PLR0913
 
     presign_request = mock_send_request.call_args_list[0][0][0]
     assert presign_request.method == "POST"
-    assert presign_request.url == (
-        "https://api.test.com/upload/ema_l1_anc_sc_1234_20240101.csv"
-    )
-    assert presign_request.headers == {"Content-Length": "0", **expected_header}
+    assert presign_request.url == "https://api.test.com/upload"
+    assert json.loads(presign_request.body) == {"filenames": [file_path.name]}
+    assert presign_request.headers.get("x-api-key") == expected_header.get("x-api-key")
 
     put_request = mock_send_request.call_args_list[1][0][0]
     assert put_request.method == "PUT"
@@ -889,3 +895,100 @@ def test_upload_request_error(mock_send_request, tmp_path):
 
     with pytest.raises(EmaDataAccessError, match="409 Conflict"):
         ema_data_access.upload(file_path)
+
+
+def test_upload_directory_partial_rejection(mock_send_request, tmp_path):
+    """Test that accepted files upload, then rejected ones raise together.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    names = [
+        "ema_l1_anc_sc_1234_20240101.csv",
+        "ema_l1_anc_sc_1234_20240102.csv",
+        "not_an_ema_file.txt",
+    ]
+    for name in names:
+        (tmp_path / name).write_bytes(b"test data")
+
+    mock_presign_response = MagicMock()
+    mock_presign_response.json.return_value = {
+        "results": [
+            {
+                "filename": names[0],
+                "status_code": 409,
+                "detail": "The file already exists.",
+            },
+            {
+                "filename": names[1],
+                "status_code": 200,
+                "upload_url": "https://s3.example.com/presigned",
+            },
+            {
+                "filename": names[2],
+                "status_code": 400,
+                "detail": "Invalid EMA file name.",
+            },
+        ]
+    }
+    mock_send_request.side_effect = [mock_presign_response, MagicMock()]
+
+    with pytest.raises(EmaDataAccessError) as excinfo:
+        ema_data_access.upload(tmp_path)
+
+    message = str(excinfo.value)
+    assert f"{names[0]}: The file already exists." in message
+    assert f"{names[2]}: Invalid EMA file name." in message
+    assert names[1] not in message
+
+    assert mock_send_request.call_count == 2
+    put_request = mock_send_request.call_args_list[1][0][0]
+    assert put_request.url == "https://s3.example.com/presigned"
+
+
+def test_upload_directory(mock_send_request, tmp_path):
+    """Test that a directory uploads its top-level, non-hidden files by name.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    names = ["ema_l1_anc_sc_1234_20240102.csv", "ema_l1_anc_sc_1234_20240101.csv"]
+    for name in names:
+        (tmp_path / name).write_bytes(b"test data")
+    (tmp_path / ".DS_Store").write_bytes(b"hidden")
+    (tmp_path / "subdir").mkdir()
+    (tmp_path / "subdir" / "ema_l1_anc_sc_1234_20240103.csv").write_bytes(b"nested")
+
+    mock_presign_response = MagicMock()
+    mock_presign_response.json.return_value = {
+        "results": [
+            {
+                "filename": name,
+                "status_code": 200,
+                "upload_url": f"https://s3.example.com/{name}",
+            }
+            for name in sorted(names)
+        ]
+    }
+    mock_send_request.side_effect = [mock_presign_response, MagicMock(), MagicMock()]
+
+    ema_data_access.upload(tmp_path)
+
+    presign_request = mock_send_request.call_args_list[0][0][0]
+    assert sorted(json.loads(presign_request.body)["filenames"]) == sorted(names)
+    assert mock_send_request.call_count == 3
+    for name, call in zip(
+        sorted(names), mock_send_request.call_args_list[1:], strict=True
+    ):
+        put_request = call[0][0]
+        assert put_request.method == "PUT"
+        assert put_request.url == f"https://s3.example.com/{name}"
+        assert put_request.body == b"test data"

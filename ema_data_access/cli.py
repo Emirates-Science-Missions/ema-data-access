@@ -18,6 +18,7 @@ Use
     ema-data-access query-spice --file-root naif
     ema-data-access metakernel --start-time 0 --end-time 100000 --list-files
     ema-data-access upload path/to/ema_l1_anc_sc_1234_20240101.csv
+    ema-data-access upload path/to/dir
     ema-data-access download ema_l1_anc_sc_1234_20240101.csv
 """
 
@@ -448,15 +449,15 @@ def add_metakernel_args(subparser: ArgumentParser) -> None:
 
 
 def _upload_parser(args: argparse.Namespace) -> None:
-    """Upload a file to the EMA PDC data archive.
+    """Upload a file, or a directory of files, to the EMA PDC data archive.
 
     Parameters
     ----------
     args : argparse.Namespace
         An object containing the parsed arguments and their values.
     """
-    ema_data_access.upload(args.file_path)
-    print(f"Uploaded {args.file_path.name}")
+    ema_data_access.upload(args.path)
+    print(f"Uploaded {args.path}")
 
 
 def add_upload_args(subparser: ArgumentParser) -> None:
@@ -468,7 +469,9 @@ def add_upload_args(subparser: ArgumentParser) -> None:
         A subparser to add the upload arguments to.
     """
     subparser.add_argument(
-        "file_path", type=Path, help="Path to the local file to upload."
+        "path",
+        type=Path,
+        help="A local file, or a directory whose files are all uploaded.",
     )
     subparser.set_defaults(func=_upload_parser)
 
@@ -543,7 +546,9 @@ def main():
     metakernel_parser = subparsers.add_parser("metakernel")
     add_metakernel_args(metakernel_parser)
 
-    upload_parser = subparsers.add_parser("upload")
+    upload_parser = subparsers.add_parser(
+        "upload", description="Upload a file, or a directory of files."
+    )
     add_upload_args(upload_parser)
 
     download_parser = subparsers.add_parser("download")
