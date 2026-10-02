@@ -19,6 +19,7 @@ Use
     ema-data-access metakernel --start-time 0 --end-time 100000 --list-files
     ema-data-access upload path/to/ema_l1_anc_sc_1234_20240101.csv
     ema-data-access download ema_l1_anc_sc_1234_20240101.csv
+    ema-data-access download naif0012.tls de440.bsp --destination kernels
 """
 
 import argparse
@@ -474,15 +475,19 @@ def add_upload_args(subparser: ArgumentParser) -> None:
 
 
 def _download_parser(args: argparse.Namespace) -> None:
-    """Download a file from the EMA PDC data archive.
+    """Download one or more files from the EMA PDC data archive.
 
     Parameters
     ----------
     args : argparse.Namespace
         An object containing the parsed arguments and their values.
     """
-    output_path = ema_data_access.download(args.file_name, destination=args.destination)
-    print(f"Downloaded {args.file_name} to {output_path}")
+    file_names = args.file_names[0] if len(args.file_names) == 1 else args.file_names
+    output_paths = ema_data_access.download(file_names, destination=args.destination)
+    for file_name, output_path in zip(
+        dict.fromkeys(args.file_names), output_paths, strict=True
+    ):
+        print(f"Downloaded {file_name} to {output_path}")
 
 
 def add_download_args(subparser: ArgumentParser) -> None:
@@ -494,13 +499,16 @@ def add_download_args(subparser: ArgumentParser) -> None:
         A subparser to add the download arguments to.
     """
     subparser.add_argument(
-        "file_name", type=str, help="Exact name of the file to download."
+        "file_names",
+        type=str,
+        nargs="+",
+        help="Exact name(s) of the file(s) to download.",
     )
     subparser.add_argument(
         "--destination",
         type=Path,
-        help="Directory or file path to save the downloaded file to. "
-        "Defaults to the current directory.",
+        help="Directory to save the downloaded files to, or a full file path "
+        "when downloading a single file. Defaults to the current directory.",
     )
     subparser.set_defaults(func=_download_parser)
 
