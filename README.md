@@ -240,10 +240,10 @@ import spiceypy
 start_time, end_time = 0, 100000
 kernel_dir = "kernels"
 
-for file_name in ema_data_access.metakernel(
+file_names = ema_data_access.metakernel(
     start_time=start_time, end_time=end_time, list_files=True
-):
-    ema_data_access.download(file_name, destination=kernel_dir)
+)
+ema_data_access.download(file_names, destination=kernel_dir)
 
 with open(f"{kernel_dir}/mission.tm", "w") as f:
     f.write(ema_data_access.metakernel(start_time=start_time, end_time=end_time))
@@ -281,9 +281,9 @@ $ curl -X PUT -H "Content-Type:" -T path/to/ema_l1_anc_sc_1234_20240101.csv "$UP
 The `-H "Content-Type:"` (empty) is required — the presigned URL isn't signed with a
 content-type, and curl's guessed one will cause a signature mismatch against S3.
 
-### Download a file
+### Download files
 
-Download a file from the EMA data archive by name. Unreleased files require
+Download one or more files from the EMA data archive by name. Unreleased files require
 an API key with at least team-level access.
 
 ```bash
@@ -296,19 +296,19 @@ or with CLI flags
 $ ema-data-access --url <url> --api-key <your-api-key> download ema_l1_anc_sc_1234_20240101.csv
 ```
 
-By default, the file is saved in the current directory under its own name.
-Pass `--destination` to save it elsewhere, either as a directory or a full
-file path:
+By default, files are saved in the current directory. Pass `--destination`
+to save them in another directory:
 
 ```bash
-$ ema-data-access --url <url> download ema_l1_anc_sc_1234_20240101.csv --destination path/to/dir
+$ ema-data-access --url <url> download naif0012.tls de440.bsp --destination path/to/dir
 ```
 
-If the destination file already exists, the download is skipped. Under the
-hood, this is equivalent to:
+Under the hood, this requests presigned
+download URLs for all the files in one call, then downloads each one:
 
 ```bash
-$ curl -H "x-api-key: $EMA_API_KEY" -o ema_l1_anc_sc_1234_20240101.csv "<url>/download/ema_l1_anc_sc_1234_20240101.csv"
+$ curl -X POST -H "x-api-key: $EMA_API_KEY" -H "Content-Type: application/json" \
+    -d '{"filenames": ["naif0012.tls", "de440.bsp"]}' "<url>/download"
 ```
 
 ## Importing as a package
@@ -335,7 +335,7 @@ results = ema_data_access.query_spice(file_root="naif")
 
 ema_data_access.upload("path/to/ema_l1_anc_sc_1234_20240101.csv")
 
-ema_data_access.download("ema_l1_anc_sc_1234_20240101.csv", destination="path/to/dir")
+ema_data_access.download(["naif0012.tls", "de440.bsp"], destination="path/to/dir")
 ```
 
 ## Running tests

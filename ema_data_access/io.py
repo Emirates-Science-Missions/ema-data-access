@@ -4,7 +4,6 @@ import contextlib
 import logging
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import quote
 
 import requests
 
@@ -478,51 +477,46 @@ def metakernel(
         return response.text
 
 
-def download(file_name: str, destination: Path | str | None = None) -> Path:
-    """Download a file from the EMA data archive.
+def download(file_names: list[str], destination: Path | str = ".") -> list[Path]:
+    """Download files from the EMA data archive.
 
     Parameters
     ----------
-    file_name : str
-        Exact name of the file to download.
+    file_names : list of str
+        Exact names of the files to download.
     destination : pathlib.Path or str, optional
-        Where to save the downloaded file. May be a directory, in which case
-        the file is saved inside it as `file_name`, or a full file path.
-        Defaults to `file_name` in the current working directory.
+        Directory to save the files in. Defaults to the current directory.
 
     Returns
     -------
-    pathlib.Path
-        Path to the downloaded file.
-
-    Raises
-    ------
-    ValueError
-        If `file_name` is not a bare file name (e.g. contains path
-        separators or `..`).
+    list of pathlib.Path
+        Path to each downloaded file.
     """
-    if file_name in ("", ".", "..") or Path(file_name).name != file_name:
-        raise ValueError(f"file_name must be a bare file name, got {file_name!r}")
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
 
-    destination = Path(destination) if destination is not None else Path(file_name)
-    if destination.is_dir():
-        destination = destination / file_name
-
-    if destination.exists():
-        logger.info(
-            "%s already exists at %s, skipping download", file_name, destination
-        )
-        return destination
-
-    url = f"{_get_base_url()}/download/{quote(file_name)}"
-    request = requests.Request(method="GET", url=url).prepare()
-
-    logger.info("Downloading %s", file_name)
+    url = f"{_get_base_url()}/download"
+    request = requests.Request(
+        method="POST", url=url, json={"filenames": file_names}
+    ).prepare()
     with _make_request(request) as response:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(response.content)
+        results = response.json()["results"]
 
-    return destination
+    paths = []
+    for result in results:
+        if result["status_code"] != 200:
+            raise EmaDataAccessError(f"{result['filename']}: {result['detail']}")
+
+        get_request = requests.Request(
+            method="GET", url=result["download_url"]
+        ).prepare()
+        logger.info("Downloading %s", result["filename"])
+        with _make_request(get_request) as file_response:
+            path = destination / result["filename"]
+            path.write_bytes(file_response.content)
+        paths.append(path)
+
+    return paths
 
 
 def upload(path: Path | str) -> None:

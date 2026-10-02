@@ -152,10 +152,10 @@ def test_download_all_files():
 
     assert mock_download.call_count == 2
     called = {
-        (call.args[0], call.kwargs["destination"])
+        (call.args[0][0], call.kwargs["destination"])
         for call in mock_download.call_args_list
     }
     assert called == {
-        ("naif0012.tls", data_dir / "spice/leapseconds/naif0012.tls"),
-        ("de440.bsp", data_dir / "spice/ephem_planetary/de440.bsp"),
+        ("naif0012.tls", data_dir / "spice/leapseconds"),
+        ("de440.bsp", data_dir / "spice/ephem_planetary"),
     }
