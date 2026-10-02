@@ -305,4 +305,4 @@ class ProcessingInputCollection:
         the same relative path `get_file_paths()` returns for it.
         """
         for path in self.get_file_paths():
-            download(path.name, destination=path)
+            download([path.name], destination=path.parent)

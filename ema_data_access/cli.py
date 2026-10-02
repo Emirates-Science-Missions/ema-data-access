@@ -482,12 +482,10 @@ def _download_parser(args: argparse.Namespace) -> None:
     args : argparse.Namespace
         An object containing the parsed arguments and their values.
     """
-    file_names = args.file_names[0] if len(args.file_names) == 1 else args.file_names
-    output_paths = ema_data_access.download(file_names, destination=args.destination)
-    for file_name, output_path in zip(
-        dict.fromkeys(args.file_names), output_paths, strict=True
+    for output_path in ema_data_access.download(
+        args.file_names, destination=args.destination
     ):
-        print(f"Downloaded {file_name} to {output_path}")
+        print(f"Downloaded {output_path}")
 
 
 def add_download_args(subparser: ArgumentParser) -> None:
@@ -507,8 +505,8 @@ def add_download_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--destination",
         type=Path,
-        help="Directory to save the downloaded files to, or a full file path "
-        "when downloading a single file. Defaults to the current directory.",
+        help="Directory to save the downloaded files to. "
+        "Defaults to the current directory.",
     )
     subparser.set_defaults(func=_download_parser)
 
