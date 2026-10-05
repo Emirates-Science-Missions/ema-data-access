@@ -491,6 +491,12 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
     -------
     list of pathlib.Path
         Path to each downloaded file.
+
+    Raises
+    ------
+    EmaDataAccessError
+        If the API can't provide any files, raised after the rest are
+        downloaded.
     """
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
@@ -503,9 +509,11 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
         results = response.json()["results"]
 
     paths = []
+    missing = []
     for result in results:
         if result["status_code"] != 200:
-            raise EmaDataAccessError(f"{result['filename']}: {result['detail']}")
+            missing.append(f"{result['filename']}: {result['detail']}")
+            continue
 
         get_request = requests.Request(
             method="GET", url=result["download_url"]
@@ -516,6 +524,8 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
             path.write_bytes(file_response.content)
         paths.append(path)
 
+    if missing:
+        raise EmaDataAccessError("Files not downloaded: " + "; ".join(missing))
     return paths
 
 

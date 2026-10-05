@@ -769,6 +769,43 @@ def test_download_file_error(mock_send_request, tmp_path):
     mock_send_request.assert_called_once()
 
 
+def test_download_partial_failure(mock_send_request, tmp_path):
+    """Test that available files download, then missing ones raise together.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    names = ["missing.csv", "naif0012.tls", "restricted.csv"]
+    mock_presign_response = MagicMock()
+    mock_presign_response.json.return_value = {
+        "results": [
+            {"filename": names[0], "status_code": 404, "detail": "Not found."},
+            {
+                "filename": names[1],
+                "status_code": 200,
+                "download_url": "https://s3.example.com/naif0012.tls",
+            },
+            {"filename": names[2], "status_code": 403, "detail": "Unreleased."},
+        ]
+    }
+    mock_send_request.side_effect = [mock_presign_response, MagicMock(content=b"tls")]
+
+    with pytest.raises(EmaDataAccessError) as excinfo:
+        ema_data_access.download(names, destination=tmp_path)
+
+    message = str(excinfo.value)
+    assert f"{names[0]}: Not found." in message
+    assert f"{names[2]}: Unreleased." in message
+    assert names[1] not in message
+
+    assert (tmp_path / names[1]).read_bytes() == b"tls"
+    assert mock_send_request.call_count == 2
+
+
 def test_upload_missing_file(tmp_path):
     """Test that uploading a nonexistent file raises FileNotFoundError.
 
