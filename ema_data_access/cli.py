@@ -20,6 +20,7 @@ Use
     ema-data-access upload path/to/ema_l1_anc_sc_1234_20240101.csv
     ema-data-access upload path/to/dir
     ema-data-access download ema_l1_anc_sc_1234_20240101.csv
+    ema-data-access download naif0012.tls de440.bsp --destination kernels
 """
 
 import argparse
@@ -477,15 +478,17 @@ def add_upload_args(subparser: ArgumentParser) -> None:
 
 
 def _download_parser(args: argparse.Namespace) -> None:
-    """Download a file from the EMA PDC data archive.
+    """Download one or more files from the EMA PDC data archive.
 
     Parameters
     ----------
     args : argparse.Namespace
         An object containing the parsed arguments and their values.
     """
-    output_path = ema_data_access.download(args.file_name, destination=args.destination)
-    print(f"Downloaded {args.file_name} to {output_path}")
+    for output_path in ema_data_access.download(
+        args.file_names, destination=args.destination
+    ):
+        print(f"Downloaded {output_path}")
 
 
 def add_download_args(subparser: ArgumentParser) -> None:
@@ -497,12 +500,16 @@ def add_download_args(subparser: ArgumentParser) -> None:
         A subparser to add the download arguments to.
     """
     subparser.add_argument(
-        "file_name", type=str, help="Exact name of the file to download."
+        "file_names",
+        type=str,
+        nargs="+",
+        help="Exact name(s) of the file(s) to download.",
     )
     subparser.add_argument(
         "--destination",
         type=Path,
-        help="Directory or file path to save the downloaded file to. "
+        default=Path("."),
+        help="Directory to save the downloaded files to. "
         "Defaults to the current directory.",
     )
     subparser.set_defaults(func=_download_parser)

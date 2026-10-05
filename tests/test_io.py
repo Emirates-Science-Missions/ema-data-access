@@ -702,39 +702,13 @@ def test_upload(  # noqa: PLR0913
     assert put_request.url == "https://s3.example.com/presigned"
     assert put_request.body == b"test data"
     assert put_request.headers["Content-Type"] == ""
+    assert "x-api-key" not in put_request.headers
 
 
-@pytest.mark.parametrize("as_str", [False, True], ids=["path", "str"])
-def test_download(mock_send_request, tmp_path, as_str: bool):
-    """Test downloading a file writes the response content to disk.
+def test_download(mock_send_request, tmp_path, monkeypatch):
+    """Test downloading POSTs for URLs, then GETs each file to disk.
 
-    Parameters
-    ----------
-    mock_send_request : unittest.mock.MagicMock
-        Mock object for ``requests.Session``
-    tmp_path : pathlib.Path
-        Pytest fixture giving a per-test temporary directory.
-    as_str : bool
-        Whether to pass the destination as a ``str`` instead of a ``Path``.
-    """
-    file_name = "ema_l1_anc_sc_1234_20240101.csv"
-    destination = tmp_path / file_name
-
-    result = ema_data_access.download(
-        file_name, destination=str(destination) if as_str else destination
-    )
-
-    assert result == destination
-    assert destination.read_bytes() == b"Mock file content"
-
-    mock_send_request.assert_called_once()
-    sent_request = mock_send_request.call_args[0][0]
-    assert sent_request.method == "GET"
-    assert sent_request.url == f"https://api.test.com/download/{file_name}"
-
-
-def test_download_default_destination(mock_send_request, tmp_path, monkeypatch):
-    """Test that download defaults to saving `file_name` in the cwd.
+    The API key goes to the API, but not to the presigned S3 URLs.
 
     Parameters
     ----------
@@ -745,56 +719,45 @@ def test_download_default_destination(mock_send_request, tmp_path, monkeypatch):
     monkeypatch : pytest.fixture
         Fixture for monkeypatching module/global state.
     """
-    monkeypatch.chdir(tmp_path)
-    file_name = "ema_l1_anc_sc_1234_20240101.csv"
+    monkeypatch.setitem(ema_data_access.config, "API_KEY", "test-api-key")
+    file_names = ["naif0012.tls", "de440.bsp"]
+    mock_presign_response = MagicMock()
+    mock_presign_response.json.return_value = {
+        "results": [
+            {
+                "filename": file_name,
+                "status_code": 200,
+                "download_url": f"https://s3.example.com/{file_name}",
+            }
+            for file_name in file_names
+        ]
+    }
+    mock_send_request.side_effect = [
+        mock_presign_response,
+        MagicMock(content=b"tls"),
+        MagicMock(content=b"bsp"),
+    ]
 
-    result = ema_data_access.download(file_name)
+    result = ema_data_access.download(file_names, destination=tmp_path)
 
-    assert result.resolve() == tmp_path / file_name
-    assert result.read_bytes() == b"Mock file content"
+    assert result == [tmp_path / "naif0012.tls", tmp_path / "de440.bsp"]
+    assert [path.read_bytes() for path in result] == [b"tls", b"bsp"]
 
+    presign_request = mock_send_request.call_args_list[0][0][0]
+    assert presign_request.method == "POST"
+    assert presign_request.url == "https://api.test.com/download"
+    assert json.loads(presign_request.body) == {"filenames": file_names}
+    assert presign_request.headers["x-api-key"] == "test-api-key"
 
-def test_download_to_directory(mock_send_request, tmp_path):
-    """Test that passing a directory as the destination saves inside it.
-
-    Parameters
-    ----------
-    mock_send_request : unittest.mock.MagicMock
-        Mock object for ``requests.Session``
-    tmp_path : pathlib.Path
-        Pytest fixture giving a per-test temporary directory.
-    """
-    file_name = "ema_l1_anc_sc_1234_20240101.csv"
-
-    result = ema_data_access.download(file_name, destination=tmp_path)
-
-    assert result == tmp_path / file_name
-    assert result.read_bytes() == b"Mock file content"
-
-
-def test_download_already_exists(mock_send_request, tmp_path):
-    """Test that download skips the request if the file already exists.
-
-    Parameters
-    ----------
-    mock_send_request : unittest.mock.MagicMock
-        Mock object for ``requests.Session``
-    tmp_path : pathlib.Path
-        Pytest fixture giving a per-test temporary directory.
-    """
-    file_name = "ema_l1_anc_sc_1234_20240101.csv"
-    destination = tmp_path / file_name
-    destination.write_bytes(b"already here")
-
-    result = ema_data_access.download(file_name, destination=destination)
-
-    assert result == destination
-    assert destination.read_bytes() == b"already here"
-    mock_send_request.assert_not_called()
+    get_request = mock_send_request.call_args_list[1][0][0]
+    assert get_request.method == "GET"
+    assert get_request.url == "https://s3.example.com/naif0012.tls"
+    for call in mock_send_request.call_args_list[1:]:
+        assert "x-api-key" not in call[0][0].headers
 
 
-def test_download_request_error(mock_send_request, tmp_path):
-    """Test that a rejected download request raises EmaDataAccessError.
+def test_download_rejects_str(mock_send_request, tmp_path):
+    """Test that a single file name passed as a str is rejected up front.
 
     Parameters
     ----------
@@ -803,44 +766,14 @@ def test_download_request_error(mock_send_request, tmp_path):
     tmp_path : pathlib.Path
         Pytest fixture giving a per-test temporary directory.
     """
-    mock_response = MagicMock()
-    mock_response.status_code = 404
-    mock_response.reason = "Not Found"
-    mock_response.text = "The requested resource was not found."
-    mock_send_request.side_effect = requests.exceptions.HTTPError(
-        response=mock_response
-    )
-
-    with pytest.raises(EmaDataAccessError, match="404 Not Found"):
-        ema_data_access.download(
-            "ema_l1_anc_sc_1234_20240101.csv", destination=tmp_path
-        )
-
-
-@pytest.mark.parametrize(
-    "file_name",
-    ["../../etc/passwd", "foo/bar.csv", "..", ".", "", "/etc/passwd"],
-)
-def test_download_rejects_non_bare_file_name(mock_send_request, tmp_path, file_name):
-    """Test that download rejects file names containing path components.
-
-    Parameters
-    ----------
-    mock_send_request : unittest.mock.MagicMock
-        Mock object for ``requests.Session``
-    tmp_path : pathlib.Path
-        Pytest fixture giving a per-test temporary directory.
-    file_name : str
-        Non-bare file name that should be rejected.
-    """
-    with pytest.raises(ValueError, match="bare file name"):
-        ema_data_access.download(file_name, destination=tmp_path)
+    with pytest.raises(TypeError, match="list of file names"):
+        ema_data_access.download("naif0012.tls", destination=tmp_path)
 
     mock_send_request.assert_not_called()
 
 
-def test_download_url_encodes_file_name(mock_send_request, tmp_path):
-    """Test that special characters in the file name are URL-encoded.
+def test_download_file_error(mock_send_request, tmp_path):
+    """Test that a file the API can't provide raises EmaDataAccessError.
 
     Parameters
     ----------
@@ -849,15 +782,53 @@ def test_download_url_encodes_file_name(mock_send_request, tmp_path):
     tmp_path : pathlib.Path
         Pytest fixture giving a per-test temporary directory.
     """
-    file_name = "ema_l1_anc_sc_1234_20240101 (copy)#1.csv"
+    mock_send_request.return_value.json.return_value = {
+        "results": [
+            {"filename": "missing.csv", "status_code": 404, "detail": "Not found."}
+        ]
+    }
 
-    ema_data_access.download(file_name, destination=tmp_path)
+    with pytest.raises(EmaDataAccessError, match="Not found"):
+        ema_data_access.download(["missing.csv"], destination=tmp_path)
 
-    sent_request = mock_send_request.call_args[0][0]
-    assert (
-        sent_request.url == "https://api.test.com/download/"
-        "ema_l1_anc_sc_1234_20240101%20%28copy%29%231.csv"
-    )
+    mock_send_request.assert_called_once()
+
+
+def test_download_partial_failure(mock_send_request, tmp_path):
+    """Test that available files download, then missing ones raise together.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    names = ["missing.csv", "naif0012.tls", "restricted.csv"]
+    mock_presign_response = MagicMock()
+    mock_presign_response.json.return_value = {
+        "results": [
+            {"filename": names[0], "status_code": 404, "detail": "Not found."},
+            {
+                "filename": names[1],
+                "status_code": 200,
+                "download_url": "https://s3.example.com/naif0012.tls",
+            },
+            {"filename": names[2], "status_code": 403, "detail": "Unreleased."},
+        ]
+    }
+    mock_send_request.side_effect = [mock_presign_response, MagicMock(content=b"tls")]
+
+    with pytest.raises(EmaDataAccessError) as excinfo:
+        ema_data_access.download(names, destination=tmp_path)
+
+    message = str(excinfo.value)
+    assert f"{names[0]}: Not found." in message
+    assert f"{names[2]}: Unreleased." in message
+    assert names[1] not in message
+
+    assert (tmp_path / names[1]).read_bytes() == b"tls"
+    assert mock_send_request.call_count == 2
 
 
 def test_upload_missing_file(tmp_path):

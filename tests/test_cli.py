@@ -1,6 +1,7 @@
 """Tests for the ``cli`` module."""
 
 import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -273,3 +274,40 @@ def test_cli_upload(capsys, tmp_path, name):
 
     mock_upload.assert_called_once_with(path)
     assert f"Uploaded {path}" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("extra_args", "expected_destination"),
+    [([], Path(".")), (["--destination", "out"], Path("out"))],
+    ids=["default", "explicit"],
+)
+def test_cli_download(capsys, extra_args: list, expected_destination: Path):
+    """Test that 'download' calls ema_data_access.download().
+
+    Without --destination, the current directory is passed rather than None.
+
+    Parameters
+    ----------
+    capsys : pytest.fixture
+        Fixture capturing stdout/stderr.
+    extra_args : list
+        Additional CLI arguments after the file names.
+    expected_destination : pathlib.Path
+        The destination `download()` should receive.
+    """
+    with patch.object(
+        sys,
+        "argv",
+        ["ema-data-access", "download", "naif0012.tls", *extra_args],
+    ):
+        with patch.object(
+            ema_data_access,
+            "download",
+            return_value=[expected_destination / "naif0012.tls"],
+        ) as mock_download:
+            main()
+
+    mock_download.assert_called_once_with(
+        ["naif0012.tls"], destination=expected_destination
+    )
+    assert "Downloaded" in capsys.readouterr().out

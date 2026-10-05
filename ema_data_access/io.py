@@ -4,7 +4,6 @@ import contextlib
 import logging
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import quote
 
 import requests
 
@@ -23,15 +22,16 @@ _RETRY_ADAPTER = requests.adapters.HTTPAdapter(max_retries=3)
 
 
 @contextlib.contextmanager
-def _make_request(request: requests.PreparedRequest):
+def _make_request(request: requests.PreparedRequest, authenticate: bool = True):
     """Get the response from a URL request using the requests library.
 
     This is a helper function to handle different types of errors that can
-    occur when making HTTP requests and yield the response body.
+    occur when making HTTP requests and yield the response body. Pass
+    ``authenticate=False`` for presigned S3 URLs so the API key isn't sent.
     """
     logger.debug("Making request: %s", request)
 
-    if ema_data_access.config["API_KEY"]:
+    if authenticate and ema_data_access.config["API_KEY"]:
         request.headers["x-api-key"] = ema_data_access.config["API_KEY"]
     try:
         with requests.Session() as session:
@@ -478,51 +478,61 @@ def metakernel(
         return response.text
 
 
-def download(file_name: str, destination: Path | str | None = None) -> Path:
-    """Download a file from the EMA data archive.
+def download(file_names: list[str], destination: Path | str = ".") -> list[Path]:
+    """Download files from the EMA data archive.
 
     Parameters
     ----------
-    file_name : str
-        Exact name of the file to download.
+    file_names : list of str
+        Exact names of the files to download.
     destination : pathlib.Path or str, optional
-        Where to save the downloaded file. May be a directory, in which case
-        the file is saved inside it as `file_name`, or a full file path.
-        Defaults to `file_name` in the current working directory.
+        Directory to save the files in. Defaults to the current directory.
 
     Returns
     -------
-    pathlib.Path
-        Path to the downloaded file.
+    list of pathlib.Path
+        Path to each downloaded file.
 
     Raises
     ------
-    ValueError
-        If `file_name` is not a bare file name (e.g. contains path
-        separators or `..`).
+    TypeError
+        If `file_names` is a single str rather than a list.
+    EmaDataAccessError
+        If the API can't provide any files, raised after the rest are
+        downloaded.
     """
-    if file_name in ("", ".", "..") or Path(file_name).name != file_name:
-        raise ValueError(f"file_name must be a bare file name, got {file_name!r}")
+    if isinstance(file_names, str):
+        raise TypeError("file_names must be a list of file names, not a str")
 
-    destination = Path(destination) if destination is not None else Path(file_name)
-    if destination.is_dir():
-        destination = destination / file_name
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
 
-    if destination.exists():
-        logger.info(
-            "%s already exists at %s, skipping download", file_name, destination
-        )
-        return destination
-
-    url = f"{_get_base_url()}/download/{quote(file_name)}"
-    request = requests.Request(method="GET", url=url).prepare()
-
-    logger.info("Downloading %s", file_name)
+    url = f"{_get_base_url()}/download"
+    request = requests.Request(
+        method="POST", url=url, json={"filenames": file_names}
+    ).prepare()
     with _make_request(request) as response:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(response.content)
+        results = response.json()["results"]
 
-    return destination
+    paths = []
+    missing = []
+    for result in results:
+        if result["status_code"] != 200:
+            missing.append(f"{result['filename']}: {result['detail']}")
+            continue
+
+        get_request = requests.Request(
+            method="GET", url=result["download_url"]
+        ).prepare()
+        logger.info("Downloading %s", result["filename"])
+        with _make_request(get_request, authenticate=False) as file_response:
+            path = destination / result["filename"]
+            path.write_bytes(file_response.content)
+        paths.append(path)
+
+    if missing:
+        raise EmaDataAccessError("Files not downloaded: " + "; ".join(missing))
+    return paths
 
 
 def upload(path: Path | str) -> None:
@@ -573,7 +583,7 @@ def upload(path: Path | str) -> None:
         ).prepare()
 
         logger.info("Uploading %s", name)
-        with _make_request(put_request):
+        with _make_request(put_request, authenticate=False):
             pass
 
     if rejected:
