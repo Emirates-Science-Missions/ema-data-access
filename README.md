@@ -311,6 +311,13 @@ $ curl -X POST -H "x-api-key: $EMA_API_KEY" -H "Content-Type: application/json" 
     -d '{"filenames": ["naif0012.tls", "de440.bsp"]}' "<url>/download"
 ```
 
+Each entry in the returned `results` has a `download_url`. Fetch each one
+without the API key; the presigned URL carries its own authorization:
+
+```bash
+$ curl -o naif0012.tls "<download_url>"
+```
+
 ## Importing as a package
 
 ```python
