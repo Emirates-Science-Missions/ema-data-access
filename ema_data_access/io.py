@@ -494,10 +494,15 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
 
     Raises
     ------
+    TypeError
+        If `file_names` is a single str rather than a list.
     EmaDataAccessError
         If the API can't provide any files, raised after the rest are
         downloaded.
     """
+    if isinstance(file_names, str):
+        raise TypeError("file_names must be a list of file names, not a str")
+
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
 

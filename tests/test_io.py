@@ -747,6 +747,22 @@ def test_download(mock_send_request, tmp_path):
     assert get_request.url == "https://s3.example.com/naif0012.tls"
 
 
+def test_download_rejects_str(mock_send_request, tmp_path):
+    """Test that a single file name passed as a str is rejected up front.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    with pytest.raises(TypeError, match="list of file names"):
+        ema_data_access.download("naif0012.tls", destination=tmp_path)
+
+    mock_send_request.assert_not_called()
+
+
 def test_download_file_error(mock_send_request, tmp_path):
     """Test that a file the API can't provide raises EmaDataAccessError.
 
