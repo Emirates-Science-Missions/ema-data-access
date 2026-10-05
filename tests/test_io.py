@@ -702,10 +702,13 @@ def test_upload(  # noqa: PLR0913
     assert put_request.url == "https://s3.example.com/presigned"
     assert put_request.body == b"test data"
     assert put_request.headers["Content-Type"] == ""
+    assert "x-api-key" not in put_request.headers
 
 
-def test_download(mock_send_request, tmp_path):
+def test_download(mock_send_request, tmp_path, monkeypatch):
     """Test downloading POSTs for URLs, then GETs each file to disk.
+
+    The API key goes to the API, but not to the presigned S3 URLs.
 
     Parameters
     ----------
@@ -713,7 +716,10 @@ def test_download(mock_send_request, tmp_path):
         Mock object for ``requests.Session``
     tmp_path : pathlib.Path
         Pytest fixture giving a per-test temporary directory.
+    monkeypatch : pytest.fixture
+        Fixture for monkeypatching module/global state.
     """
+    monkeypatch.setitem(ema_data_access.config, "API_KEY", "test-api-key")
     file_names = ["naif0012.tls", "de440.bsp"]
     mock_presign_response = MagicMock()
     mock_presign_response.json.return_value = {
@@ -741,10 +747,13 @@ def test_download(mock_send_request, tmp_path):
     assert presign_request.method == "POST"
     assert presign_request.url == "https://api.test.com/download"
     assert json.loads(presign_request.body) == {"filenames": file_names}
+    assert presign_request.headers["x-api-key"] == "test-api-key"
 
     get_request = mock_send_request.call_args_list[1][0][0]
     assert get_request.method == "GET"
     assert get_request.url == "https://s3.example.com/naif0012.tls"
+    for call in mock_send_request.call_args_list[1:]:
+        assert "x-api-key" not in call[0][0].headers
 
 
 def test_download_rejects_str(mock_send_request, tmp_path):
