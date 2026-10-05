@@ -261,3 +261,15 @@ def test_cli_metakernel_list_files(capsys):
         require_coverage=False,
     )
     assert "ema_pred_v001.bsp" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("name", ["ema_l1_anc_sc_1234_20240101.csv", "dir"])
+def test_cli_upload(capsys, tmp_path, name):
+    """Test that 'upload' passes its path to ema_data_access.upload()."""
+    path = tmp_path / name
+    with patch.object(sys, "argv", ["ema-data-access", "upload", str(path)]):
+        with patch.object(ema_data_access, "upload") as mock_upload:
+            main()
+
+    mock_upload.assert_called_once_with(path)
+    assert f"Uploaded {path}" in capsys.readouterr().out

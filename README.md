@@ -253,9 +253,10 @@ spiceypy.furnsh(f"{kernel_dir}/mission.tm")
 
 ### Upload a file
 
-Upload a local file to the EMA data archive. The file name must match a
-known EMA naming convention, and requires an API key with developer-level
-access — request one from the EMA PDC team.
+Upload a local file, or every file in a directory, to the EMA data archive.
+File names must match a known EMA naming convention, and uploading requires an
+API key with developer-level access — request one from the EMA PDC team.
+Files the API rejects are listed in an error once the rest are uploaded.
 
 ```bash
 $ EMA_API_KEY=<your-api-key> ema-data-access --url <url> upload path/to/ema_l1_anc_sc_1234_20240101.csv
@@ -264,15 +265,16 @@ $ EMA_API_KEY=<your-api-key> ema-data-access --url <url> upload path/to/ema_l1_a
 or with CLI flags
 
 ```bash
-$ ema-data-access --url <url> --api-key <your-api-key> upload path/to/ema_l1_anc_sc_1234_20240101.csv
+$ ema-data-access --url <url> --api-key <your-api-key> upload path/to/dir
 ```
 
-Under the hood, this requests a presigned upload URL and then PUTs the file
-to it, equivalent to:
+Under the hood, this requests presigned upload URLs and then PUTs each file,
+equivalent to:
 
 ```bash
-$ RESPONSE=$(curl -s -X POST -H "x-api-key: $EMA_API_KEY" <url>/upload/ema_l1_anc_sc_1234_20240101.csv)
-$ UPLOAD_URL=$(echo "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin)['upload_url'])")
+$ RESPONSE=$(curl -s -X POST -H "x-api-key: $EMA_API_KEY" -H "Content-Type: application/json" \
+    -d '{"filenames": ["ema_l1_anc_sc_1234_20240101.csv"]}' <url>/upload)
+$ UPLOAD_URL=$(echo "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin)['results'][0]['upload_url'])")
 $ curl -X PUT -H "Content-Type:" -T path/to/ema_l1_anc_sc_1234_20240101.csv "$UPLOAD_URL"
 ```
 

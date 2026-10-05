@@ -88,6 +88,17 @@ def _normalize_date_param(value: str | None) -> str | None:
     return parsed.strftime(out_format)
 
 
+def _query(endpoint: str, params: dict) -> list[dict]:
+    """GET `endpoint` with the non-None `params` and return the JSON rows."""
+    params = {k: v for k, v in params.items() if v is not None}
+    url = f"{_get_base_url()}/{endpoint}"
+    request = requests.Request(method="GET", url=url, params=params).prepare()
+
+    logger.info("Querying %s with url %s", endpoint, request.url)
+    with _make_request(request) as response:
+        return response.json()
+
+
 def query_ancillary(  # noqa: PLR0913
     *,
     file_name: str | None = None,
@@ -129,27 +140,19 @@ def query_ancillary(  # noqa: PLR0913
     list
         List of rows matching the query, as dicts.
     """
-    params = {
-        "file_name": file_name,
-        "apid": apid,
-        "timetag_start": _normalize_date_param(timetag_start),
-        "timetag_end": _normalize_date_param(timetag_end),
-        "file_extension": file_extension,
-        "version": version,
-        "md5checksum": md5checksum,
-        "limit": limit,
-    }
-    params = {k: v for k, v in params.items() if v is not None}
-
-    url = f"{_get_base_url()}/query_ancillary"
-    request = requests.Request(method="GET", url=url, params=params).prepare()
-
-    logger.info("Querying ancillary table with url %s", request.url)
-    with _make_request(request) as response:
-        items = response.json()
-        logger.debug("Received JSON: %s", items)
-
-    return items
+    return _query(
+        "query_ancillary",
+        {
+            "file_name": file_name,
+            "apid": apid,
+            "timetag_start": _normalize_date_param(timetag_start),
+            "timetag_end": _normalize_date_param(timetag_end),
+            "file_extension": file_extension,
+            "version": version,
+            "md5checksum": md5checksum,
+            "limit": limit,
+        },
+    )
 
 
 def query_housekeeping(  # noqa: PLR0913
@@ -185,25 +188,17 @@ def query_housekeeping(  # noqa: PLR0913
     list
         List of rows matching the query, as dicts.
     """
-    params = {
-        "file_name": file_name,
-        "payload": payload,
-        "timetag_start": _normalize_date_param(timetag_start),
-        "timetag_end": _normalize_date_param(timetag_end),
-        "version": version,
-        "md5checksum": md5checksum,
-    }
-    params = {k: v for k, v in params.items() if v is not None}
-
-    url = f"{_get_base_url()}/query_housekeeping"
-    request = requests.Request(method="GET", url=url, params=params).prepare()
-
-    logger.info("Querying housekeeping table with url %s", request.url)
-    with _make_request(request) as response:
-        items = response.json()
-        logger.debug("Received JSON: %s", items)
-
-    return items
+    return _query(
+        "query_housekeeping",
+        {
+            "file_name": file_name,
+            "payload": payload,
+            "timetag_start": _normalize_date_param(timetag_start),
+            "timetag_end": _normalize_date_param(timetag_end),
+            "version": version,
+            "md5checksum": md5checksum,
+        },
+    )
 
 
 def query_science(  # noqa: PLR0913
@@ -255,30 +250,22 @@ def query_science(  # noqa: PLR0913
     list
         List of rows matching the query, as dicts.
     """
-    params = {
-        "file_name": file_name,
-        "payload": payload,
-        "data_level": data_level,
-        "timetag_start": _normalize_date_param(timetag_start),
-        "timetag_end": _normalize_date_param(timetag_end),
-        "descriptor": descriptor,
-        "pred_rec": pred_rec,
-        "file_extension": file_extension,
-        "major_version": major_version,
-        "minor_version": minor_version,
-        "md5checksum": md5checksum,
-    }
-    params = {k: v for k, v in params.items() if v is not None}
-
-    url = f"{_get_base_url()}/query_science"
-    request = requests.Request(method="GET", url=url, params=params).prepare()
-
-    logger.info("Querying science table with url %s", request.url)
-    with _make_request(request) as response:
-        items = response.json()
-        logger.debug("Received JSON: %s", items)
-
-    return items
+    return _query(
+        "query_science",
+        {
+            "file_name": file_name,
+            "payload": payload,
+            "data_level": data_level,
+            "timetag_start": _normalize_date_param(timetag_start),
+            "timetag_end": _normalize_date_param(timetag_end),
+            "descriptor": descriptor,
+            "pred_rec": pred_rec,
+            "file_extension": file_extension,
+            "major_version": major_version,
+            "minor_version": minor_version,
+            "md5checksum": md5checksum,
+        },
+    )
 
 
 def query_mission_events(
@@ -314,24 +301,16 @@ def query_mission_events(
     list
         List of rows matching the query, as dicts.
     """
-    params = {
-        "file_name": file_name,
-        "start_date": _normalize_date_param(start_date),
-        "end_date": _normalize_date_param(end_date),
-        "version": version,
-        "md5checksum": md5checksum,
-    }
-    params = {k: v for k, v in params.items() if v is not None}
-
-    url = f"{_get_base_url()}/query_mission_events"
-    request = requests.Request(method="GET", url=url, params=params).prepare()
-
-    logger.info("Querying mission_events table with url %s", request.url)
-    with _make_request(request) as response:
-        items = response.json()
-        logger.debug("Received JSON: %s", items)
-
-    return items
+    return _query(
+        "query_mission_events",
+        {
+            "file_name": file_name,
+            "start_date": _normalize_date_param(start_date),
+            "end_date": _normalize_date_param(end_date),
+            "version": version,
+            "md5checksum": md5checksum,
+        },
+    )
 
 
 def query_manifest(
@@ -361,23 +340,15 @@ def query_manifest(
     list
         List of rows matching the query, as dicts.
     """
-    params = {
-        "file_name": file_name,
-        "payload": payload,
-        "timetag_start": _normalize_date_param(timetag_start),
-        "timetag_end": _normalize_date_param(timetag_end),
-    }
-    params = {k: v for k, v in params.items() if v is not None}
-
-    url = f"{_get_base_url()}/query_manifest"
-    request = requests.Request(method="GET", url=url, params=params).prepare()
-
-    logger.info("Querying manifest table with url %s", request.url)
-    with _make_request(request) as response:
-        items = response.json()
-        logger.debug("Received JSON: %s", items)
-
-    return items
+    return _query(
+        "query_manifest",
+        {
+            "file_name": file_name,
+            "payload": payload,
+            "timetag_start": _normalize_date_param(timetag_start),
+            "timetag_end": _normalize_date_param(timetag_end),
+        },
+    )
 
 
 def query_spice(  # noqa: PLR0913
@@ -430,30 +401,22 @@ def query_spice(  # noqa: PLR0913
     list
         List of rows matching the query, as dicts.
     """
-    params = {
-        "file_name": file_name,
-        "file_root": file_root,
-        "min_date_j2000": min_date_j2000,
-        "max_date_j2000": max_date_j2000,
-        "min_date_datetime": _normalize_date_param(min_date_datetime),
-        "max_date_datetime": _normalize_date_param(max_date_datetime),
-        "delivery_date_start": _normalize_date_param(delivery_date_start),
-        "delivery_date_end": _normalize_date_param(delivery_date_end),
-        "od_number": od_number,
-        "version": version,
-        "limit": limit,
-    }
-    params = {k: v for k, v in params.items() if v is not None}
-
-    url = f"{_get_base_url()}/query_spice"
-    request = requests.Request(method="GET", url=url, params=params).prepare()
-
-    logger.info("Querying spice table with url %s", request.url)
-    with _make_request(request) as response:
-        items = response.json()
-        logger.debug("Received JSON: %s", items)
-
-    return items
+    return _query(
+        "query_spice",
+        {
+            "file_name": file_name,
+            "file_root": file_root,
+            "min_date_j2000": min_date_j2000,
+            "max_date_j2000": max_date_j2000,
+            "min_date_datetime": _normalize_date_param(min_date_datetime),
+            "max_date_datetime": _normalize_date_param(max_date_datetime),
+            "delivery_date_start": _normalize_date_param(delivery_date_start),
+            "delivery_date_end": _normalize_date_param(delivery_date_end),
+            "od_number": od_number,
+            "version": version,
+            "limit": limit,
+        },
+    )
 
 
 def metakernel(
@@ -562,33 +525,56 @@ def download(file_name: str, destination: Path | str | None = None) -> Path:
     return destination
 
 
-def upload(file_path: Path | str) -> None:
-    """Upload a file to the EMA data archive.
+def upload(path: Path | str) -> None:
+    """Upload a file, or the files in a directory, to the EMA data archive.
 
     Parameters
     ----------
-    file_path : pathlib.Path or str
-        Path to the file to upload.
+    path : pathlib.Path or str
+        A file to upload, or a directory whose files are uploaded.
+
+    Raises
+    ------
+    EmaDataAccessError
+        If the API rejects any files, raised after the rest are uploaded.
     """
-    file_path = Path(file_path)
-    if not file_path.is_file():
-        raise FileNotFoundError(file_path)
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(path)
+    if path.is_file():
+        files = [path]
+    else:
+        files = [
+            f for f in path.iterdir() if f.is_file() and not f.name.startswith(".")
+        ]
+    files = {f.name: f for f in files}
 
-    url = f"{_get_base_url()}/upload/{file_path.name}"
-    request = requests.Request(method="POST", url=url).prepare()
-
-    logger.info("Requesting upload URL for %s", file_path.name)
-    with _make_request(request) as response:
-        upload_url = response.json()["upload_url"]
-        logger.debug("Received s3 presigned URL")
-
-    put_request = requests.Request(
-        method="PUT",
-        url=upload_url,
-        data=file_path.read_bytes(),
-        headers={"Content-Type": ""},
+    url = f"{_get_base_url()}/upload"
+    request = requests.Request(
+        method="POST", url=url, json={"filenames": list(files)}
     ).prepare()
 
-    logger.info("Uploading %s", file_path.name)
-    with _make_request(put_request):
-        pass
+    logger.info("Requesting upload URLs for %d file(s)", len(files))
+    with _make_request(request) as response:
+        results = response.json()["results"]
+
+    rejected = []
+    for result in results:
+        name = result["filename"]
+        if result["status_code"] != 200:
+            rejected.append(f"{name}: {result['detail']}")
+            continue
+
+        put_request = requests.Request(
+            method="PUT",
+            url=result["upload_url"],
+            data=files[name].read_bytes(),
+            headers={"Content-Type": ""},
+        ).prepare()
+
+        logger.info("Uploading %s", name)
+        with _make_request(put_request):
+            pass
+
+    if rejected:
+        raise EmaDataAccessError("Files not uploaded: " + "; ".join(rejected))
