@@ -302,7 +302,12 @@ class ProcessingInputCollection:
         """Download all the dependency files in the collection.
 
         Each file is saved under `ema_data_access.config["DATA_DIR"]`, at
-        the same relative path `get_file_paths()` returns for it.
+        the same relative path `get_file_paths()` returns for it. Files are
+        requested in one batch per directory.
         """
-        for path in self.get_file_paths():
-            download([path.name], destination=path.parent)
+        names_by_dir: dict[Path, list[str]] = {}
+        for path in dict.fromkeys(self.get_file_paths()):
+            names_by_dir.setdefault(path.parent, []).append(path.name)
+
+        for directory, names in names_by_dir.items():
+            download(names, destination=directory)

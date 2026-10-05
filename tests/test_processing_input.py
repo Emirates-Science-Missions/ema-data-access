@@ -143,19 +143,24 @@ def test_get_file_paths_by_source():
 
 
 def test_download_all_files():
-    """Test that download_all_files downloads each file to its DATA_DIR path."""
+    """Test that download_all_files batches files by their DATA_DIR directory.
+
+    A file listed in more than one input is only requested once.
+    """
     data_dir = ema_data_access.config["DATA_DIR"]
-    collection = ProcessingInputCollection(SPICEInput("naif0012.tls", "de440.bsp"))
+    collection = ProcessingInputCollection(
+        SPICEInput("naif0012.tls", "de440.bsp", "de430.bsp"), SPICEInput("de440.bsp")
+    )
 
     with patch("ema_data_access.processing_input.download") as mock_download:
         collection.download_all_files()
 
     assert mock_download.call_count == 2
     called = {
-        (call.args[0][0], call.kwargs["destination"])
+        (tuple(call.args[0]), call.kwargs["destination"])
         for call in mock_download.call_args_list
     }
     assert called == {
-        ("naif0012.tls", data_dir / "spice/leapseconds"),
-        ("de440.bsp", data_dir / "spice/ephem_planetary"),
+        (("naif0012.tls",), data_dir / "spice/leapseconds"),
+        (("de440.bsp", "de430.bsp"), data_dir / "spice/ephem_planetary"),
     }
