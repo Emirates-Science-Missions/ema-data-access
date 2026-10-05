@@ -508,6 +508,7 @@ def add_download_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--destination",
         type=Path,
+        default=Path("."),
         help="Directory to save the downloaded files to. "
         "Defaults to the current directory.",
     )
