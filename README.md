@@ -50,15 +50,16 @@ Lightweight Python tools to query and access EMA data.
 Every file in the EMA archive must match one of the naming conventions
 below.
 
-`<payload>` is one of `mst`, `emb`, `emc`, `rpt`, `ldr`. `<data_level>` is one
-of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
+`<payload>` is one of `rept`, `mista`, `embirs`, `emacs`, `prb`, `cnc`, `pnc`,
+`irc`. `<source>` is one of `flight`, `softsim`, `flatsat`. `<data_level>` is
+one of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
 
 | Table | Convention |
 | --- | --- |
 | `ancillary` | `ema_l1_anc_sc_<apid>_<YYYYMMDD>.csv` |
 | `manifest` | `<payload>_manifest_<YYYYMMDDHHMM>.txt`, or `moc_manifest_<YYYYMMDDHHMM>.txt` for a payload-less MOC manifest |
-| `housekeeping` | `ema_l0_hsk_<payload>_<YYYYMMDD>.pkts` |
-| `science` (L0) | `ema_l0_sci_<payload>_<YYYYMMDD>.pkts` |
+| `housekeeping` | `ema_l0_hsk_<payload>_<source>_<YYYYMMDD>.pkts` |
+| `science` (L0) | `ema_l0_sci_<payload>_<source>_<YYYYMMDD>.pkts` |
 | `science` (L1a+) | `ema_<payload>_<data_level>_<YYYYMMDDtHHMMSS>_<descriptor>_<pred_rec>_v<version>[-<subversion>].fits`, where `<pred_rec>` is `p` (predicted) or `r` (reconstructed) |
 | `mission_events` | `ema_mission_events_<start_date:YYYYMMDD>_<end_date:YYYYMMDD>.xml` |
 
@@ -111,7 +112,7 @@ Query the housekeeping table for files matching a set of filters. An API key
 is optional. Without one, only `released` files are returned.
 
 ```bash
-$ EMA_API_KEY=<your-api-key> ema-data-access --url <url> query-housekeeping --payload mst
+$ EMA_API_KEY=<your-api-key> ema-data-access --url <url> query-housekeeping --payload mista
 ```
 
 Other available filters: `--file-name`, `--timetag-start`, `--timetag-end`,
@@ -120,7 +121,7 @@ Other available filters: `--file-name`, `--timetag-start`, `--timetag-end`,
 Under the hood, this is equivalent to:
 
 ```bash
-$ curl -H "x-api-key: $EMA_API_KEY" "<url>/query_housekeeping?payload=mst"
+$ curl -H "x-api-key: $EMA_API_KEY" "<url>/query_housekeeping?payload=mista"
 ```
 
 ### Query the science table
@@ -129,7 +130,7 @@ Query the science table for files matching a set of filters. An API key is
 optional. Without one, only `released` files are returned.
 
 ```bash
-$ EMA_API_KEY=<your-api-key> ema-data-access --url <url> query-science --payload emb --data-level l1a
+$ EMA_API_KEY=<your-api-key> ema-data-access --url <url> query-science --payload embirs --data-level l1a
 ```
 
 Other available filters: `--file-name`, `--timetag-start`, `--timetag-end`,
@@ -139,7 +140,7 @@ Other available filters: `--file-name`, `--timetag-start`, `--timetag-end`,
 Under the hood, this is equivalent to:
 
 ```bash
-$ curl -H "x-api-key: $EMA_API_KEY" "<url>/query_science?payload=emb&data_level=l1a"
+$ curl -H "x-api-key: $EMA_API_KEY" "<url>/query_science?payload=embirs&data_level=l1a"
 ```
 
 ### Query the mission events table
@@ -169,7 +170,7 @@ Query the manifest table for files matching a set of filters. Manifest rows
 are public, so no API key is required.
 
 ```bash
-$ ema-data-access --url <url> query-manifest --payload emb
+$ ema-data-access --url <url> query-manifest --payload embirs
 ```
 
 Other available filters: `--file-name`, `--timetag-start`, `--timetag-end`.
@@ -181,7 +182,7 @@ Results are returned as JSON.
 Under the hood, this is equivalent to:
 
 ```bash
-$ curl "<url>/query_manifest?payload=emb"
+$ curl "<url>/query_manifest?payload=embirs"
 ```
 
 ### Query the spice table
@@ -328,15 +329,15 @@ ema_data_access.config["API_KEY"] = "<your-api-key>"
 
 results = ema_data_access.query_ancillary(apid=1234, file_extension="csv")
 
-results = ema_data_access.query_housekeeping(payload="mst")
+results = ema_data_access.query_housekeeping(payload="mista")
 
-results = ema_data_access.query_science(payload="emb", data_level="l1a")
+results = ema_data_access.query_science(payload="embirs", data_level="l1a")
 
 results = ema_data_access.query_mission_events(
     start_date="20240101", end_date="20240110"
 )
 
-results = ema_data_access.query_manifest(payload="emb")
+results = ema_data_access.query_manifest(payload="embirs")
 
 results = ema_data_access.query_spice(file_root="naif")
 
