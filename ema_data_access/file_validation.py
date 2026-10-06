@@ -9,9 +9,11 @@ from typing import ClassVar
 
 import ema_data_access
 
-_PAYLOADS = "mst|emb|emc|rpt|ldr"
+_PAYLOADS = "rept|mista|embirs|emacs|prb|cnc|pnc|irc"
 _MANIFEST_PAYLOADS = f"moc|{_PAYLOADS}"
 _DATA_LEVELS = "l1|l1a|l1b|l2|l2a|l2b|l3|ql"
+# Origin of an L0 housekeeping / science file.
+_SOURCES = "flight|softsim|flatsat"
 
 
 class InvalidEmaFileError(Exception):
@@ -176,30 +178,39 @@ class ManifestFilePath(EmaFilePath):
 
 @dataclass
 class HousekeepingFilePath(EmaFilePath):
-    """ema_l0_hsk_<payload>_YYYYMMDD.pkts."""
+    """ema_l0_hsk_<payload>_<source>_YYYYMMDD.pkts."""
 
     payload: str
+    source: str
     timetag: datetime
 
     _PATTERN: ClassVar[re.Pattern] = re.compile(
-        rf"ema_l0_hsk_(?P<payload>{_PAYLOADS})_(?P<timetag>\d{{8}})(?:_v\d+)?\.pkts"
+        rf"ema_l0_hsk_(?P<payload>{_PAYLOADS})_(?P<source>{_SOURCES})_"
+        r"(?P<timetag>\d{8})(?:_v\d+)?\.pkts"
     )
 
     @classmethod
     def _extract_fields(cls, match: re.Match) -> dict:
         return {
             "payload": match["payload"],
+            "source": match["source"],
             "timetag": _parse_ymd(match["timetag"]),
         }
 
     def _extra_metadata(self) -> dict:
-        return {"payload": self.payload, "timetag": self.timetag}
+        return {
+            "payload": self.payload,
+            "source": self.source,
+            "timetag": self.timetag,
+        }
 
     def construct_path(self) -> Path:
         """See base class."""
         return (
             ema_data_access.config["DATA_DIR"]
-            / f"housekeeping/{self.payload}/{self.timetag:%Y/%m}/{self.filename}"
+            / f"{self.source}/housekeeping/{self.payload}/{self.timetag:%Y/%m}/{
+                self.filename
+            }"
         )
 
 
@@ -207,12 +218,13 @@ class HousekeepingFilePath(EmaFilePath):
 class ScienceFilePath(EmaFilePath):
     """Covers two conventions that both land in the `science` table.
 
-    L0:   ema_l0_sci_<payload>_YYYYMMDD.pkts
+    L0:   ema_l0_sci_<payload>_<source>_YYYYMMDD.pkts
     L1a+: ema_<payload>_<data_level>_YYYYMMDDtHHMMSS_<descriptor>_<pred_rec>_
           v<version>(-<subversion>).fits
     """
 
     payload: str
+    source: str | None
     data_level: str
     timetag: datetime
     descriptor: str | None
@@ -222,7 +234,8 @@ class ScienceFilePath(EmaFilePath):
     file_extension: str
 
     _L0_PATTERN: ClassVar[re.Pattern] = re.compile(
-        rf"ema_l0_sci_(?P<payload>{_PAYLOADS})_(?P<timetag>\d{{8}})(?:_v\d+)?"
+        rf"ema_l0_sci_(?P<payload>{_PAYLOADS})_(?P<source>{_SOURCES})_"
+        rf"(?P<timetag>\d{{8}})(?:_v\d+)?"
         rf"\.(?P<file_extension>pkts)"
     )
     _L1_PATTERN: ClassVar[re.Pattern] = re.compile(
@@ -251,6 +264,7 @@ class ScienceFilePath(EmaFilePath):
                 return cls(
                     filename=filename,
                     payload=match["payload"],
+                    source=match["source"],
                     data_level="l0",
                     timetag=_parse_ymd(match["timetag"]),
                     descriptor=None,
@@ -263,6 +277,8 @@ class ScienceFilePath(EmaFilePath):
                 return cls(
                     filename=filename,
                     payload=match["payload"],
+                    # L1a+ names don't carry a source.
+                    source=None,
                     data_level=match["data_level"],
                     timetag=_parse_ymdthms(match["timetag"]),
                     descriptor=match["descriptor"],
@@ -282,6 +298,7 @@ class ScienceFilePath(EmaFilePath):
     def _extra_metadata(self) -> dict:
         return {
             "payload": self.payload,
+            "source": self.source,
             "data_level": self.data_level,
             "timetag": self.timetag,
             "descriptor": self.descriptor,
@@ -293,12 +310,13 @@ class ScienceFilePath(EmaFilePath):
 
     def construct_path(self) -> Path:
         """See base class."""
-        return (
-            ema_data_access.config["DATA_DIR"]
-            / f"science/{self.payload}/{self.data_level}/{self.timetag:%Y/%m}/{
-                self.filename
-            }"
-        )
+        key = f"science/{self.payload}/{self.data_level}/{self.timetag:%Y/%m}/{
+            self.filename
+        }"
+        # Only L0 science files carry a source.
+        if self.source:
+            key = f"{self.source}/{key}"
+        return ema_data_access.config["DATA_DIR"] / key
 
 
 @dataclass
