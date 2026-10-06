@@ -11,10 +11,10 @@ Use
     ema-data-access <command> [<args>]
     ema-data-access --help
     ema-data-access query-ancillary --apid 123 --file-extension csv
-    ema-data-access query-housekeeping --payload mst
-    ema-data-access query-science --payload emb --data-level l1a
+    ema-data-access query-housekeeping --payload mista
+    ema-data-access query-science --payload embirs --data-level l1a
     ema-data-access query-mission-events --start-date 20240101 --end-date 20240110
-    ema-data-access query-manifest --payload emb
+    ema-data-access query-manifest --payload embirs
     ema-data-access query-spice --file-root naif
     ema-data-access metakernel --start-time 0 --end-time 100000 --list-files
     ema-data-access upload path/to/ema_l1_anc_sc_1234_20240101.csv
@@ -121,7 +121,7 @@ def add_query_housekeeping_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--payload",
         type=str,
-        choices=["mst", "emb", "emc", "rpt", "ldr"],
+        choices=["rept", "mista", "embirs", "emacs", "prb", "cnc", "pnc", "irc"],
         help="Payload to match.",
     )
     subparser.add_argument(
@@ -177,7 +177,7 @@ def add_query_science_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--payload",
         type=str,
-        choices=["mst", "emb", "emc", "rpt", "ldr"],
+        choices=["rept", "mista", "embirs", "emacs", "prb", "cnc", "pnc", "irc"],
         help="Payload to match.",
     )
     subparser.add_argument(
@@ -293,7 +293,7 @@ def add_query_manifest_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--payload",
         type=str,
-        choices=["mst", "emb", "emc", "rpt", "ldr", "moc"],
+        choices=["rept", "mista", "embirs", "emacs", "prb", "cnc", "pnc", "irc", "moc"],
         help="Payload to match. 'moc' matches payload-less MOC manifests.",
     )
     subparser.add_argument(
