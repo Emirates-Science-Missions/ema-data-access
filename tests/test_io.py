@@ -148,15 +148,15 @@ def test_query_ancillary_bad_params(mock_send_request):
     [
         # All parameters should send full query
         {
-            "file_name": "ema_l0_hsk_mst_20240101.pkts",
-            "payload": "mst",
+            "file_name": "ema_l0_hsk_mista_flight_20240101.pkts",
+            "payload": "mista",
             "timetag_start": "2024-01-01",
             "timetag_end": "2024-01-02",
             "version": 1,
             "md5checksum": "abc123",
         },
         # Make sure not all query params are sent if they are missing
-        {"payload": "mst"},
+        {"payload": "mista"},
         # No parameters at all
         {},
     ],
@@ -212,7 +212,7 @@ def test_query_housekeeping_bad_params(mock_send_request):
         # All parameters should send full query
         {
             "file_name": "ema_rpt_l1a_20240101t000000_flux_p_v01-00.cdf",
-            "payload": "rpt",
+            "payload": "rept",
             "data_level": "l1a",
             "timetag_start": "2024-01-01",
             "timetag_end": "2024-01-02",
@@ -341,13 +341,13 @@ def test_query_mission_events_bad_params(mock_send_request):
     [
         # All parameters should send full query
         {
-            "file_name": "emb_manifest_202402020000.txt",
-            "payload": "emb",
+            "file_name": "embirs_manifest_202402020000.txt",
+            "payload": "embirs",
             "timetag_start": "2024-01-01T00:00:00",
             "timetag_end": "2024-01-02T00:00:00",
         },
         # Make sure not all query params are sent if they are missing
-        {"payload": "emb"},
+        {"payload": "embirs"},
         # No parameters at all
         {},
     ],

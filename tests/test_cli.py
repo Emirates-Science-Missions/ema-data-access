@@ -49,24 +49,24 @@ def test_cli_query_housekeeping(capsys):
     with patch.object(
         sys,
         "argv",
-        ["ema-data-access", "query-housekeeping", "--payload", "mst"],
+        ["ema-data-access", "query-housekeeping", "--payload", "mista"],
     ):
         with patch.object(
             ema_data_access,
             "query_housekeeping",
-            return_value=[{"file_name": "ema_l0_hsk_mst_20240101.pkts"}],
+            return_value=[{"file_name": "ema_l0_hsk_mista_flight_20240101.pkts"}],
         ) as mock_query:
             main()
 
     mock_query.assert_called_once_with(
         file_name=None,
-        payload="mst",
+        payload="mista",
         timetag_start=None,
         timetag_end=None,
         version=None,
         md5checksum=None,
     )
-    assert "ema_l0_hsk_mst_20240101.pkts" in capsys.readouterr().out
+    assert "ema_l0_hsk_mista_flight_20240101.pkts" in capsys.readouterr().out
 
 
 def test_cli_query_science(capsys):
@@ -135,22 +135,22 @@ def test_cli_query_manifest(capsys):
     with patch.object(
         sys,
         "argv",
-        ["ema-data-access", "query-manifest", "--payload", "emb"],
+        ["ema-data-access", "query-manifest", "--payload", "embirs"],
     ):
         with patch.object(
             ema_data_access,
             "query_manifest",
-            return_value=[{"file_name": "emb_manifest_202402020000.txt"}],
+            return_value=[{"file_name": "embirs_manifest_202402020000.txt"}],
         ) as mock_query:
             main()
 
     mock_query.assert_called_once_with(
         file_name=None,
-        payload="emb",
+        payload="embirs",
         timetag_start=None,
         timetag_end=None,
     )
-    assert "emb_manifest_202402020000.txt" in capsys.readouterr().out
+    assert "embirs_manifest_202402020000.txt" in capsys.readouterr().out
 
 
 def test_cli_query_spice(capsys):

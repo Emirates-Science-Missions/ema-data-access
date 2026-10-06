@@ -62,7 +62,7 @@ def test_ancillary_file_path_versioned():
     ("filename", "payload"),
     [
         ("moc_manifest_202401151230.txt", "moc"),
-        ("mst_manifest_202401151230.txt", "mst"),
+        ("mista_manifest_202401151230.txt", "mista"),
     ],
 )
 def test_manifest_file_path(filename: str, payload: str):
@@ -82,41 +82,60 @@ def test_manifest_file_path_invalid_payload():
         ManifestFilePath.from_filename("xyz_manifest_202401151230.txt")
 
 
-def test_housekeeping_file_path():
+@pytest.mark.parametrize("source", ["flight", "softsim", "flatsat"])
+def test_housekeeping_file_path(source: str):
     """Test parsing, metadata, and path construction for a housekeeping file."""
-    parsed = HousekeepingFilePath.from_filename("ema_l0_hsk_emb_20240115.pkts")
+    filename = f"ema_l0_hsk_embirs_{source}_20240115.pkts"
+    parsed = HousekeepingFilePath.from_filename(filename)
 
-    assert parsed.payload == "emb"
+    assert parsed.payload == "embirs"
+    assert parsed.source == source
     assert parsed.timetag == datetime(2024, 1, 15, tzinfo=UTC)
     assert parsed.to_metadata() == {
-        "file_name": "ema_l0_hsk_emb_20240115.pkts",
-        "payload": "emb",
+        "file_name": filename,
+        "payload": "embirs",
+        "source": source,
         "timetag": datetime(2024, 1, 15, tzinfo=UTC),
     }
     assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
-        "housekeeping/emb/2024/01/ema_l0_hsk_emb_20240115.pkts"
+        f"{source}/housekeeping/embirs/2024/01/{filename}"
     )
 
 
-def test_housekeeping_file_path_invalid_payload():
-    """Test that "moc" is not a valid housekeeping payload."""
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "ema_l0_hsk_moc_flight_20240115.pkts",  # moc isn't a housekeeping payload
+        "ema_l0_hsk_emb_flight_20240115.pkts",  # old three-letter payload code
+        "ema_l0_hsk_embirs_20240115.pkts",  # missing source
+        "ema_l0_hsk_embirs_ground_20240115.pkts",  # unknown source
+    ],
+)
+def test_housekeeping_file_path_invalid(filename: str):
+    """Test that bad payloads and missing or unknown sources are rejected."""
     with pytest.raises(InvalidEmaFileError):
-        HousekeepingFilePath.from_filename("ema_l0_hsk_moc_20240115.pkts")
+        HousekeepingFilePath.from_filename(filename)
 
 
 def test_housekeeping_file_path_versioned():
     """Test parsing the version suffix the PDC adds once it ingests a file."""
-    parsed = HousekeepingFilePath.from_filename("ema_l0_hsk_emb_20240115_v01.pkts")
+    parsed = HousekeepingFilePath.from_filename(
+        "ema_l0_hsk_embirs_flight_20240115_v01.pkts"
+    )
 
-    assert parsed.payload == "emb"
+    assert parsed.payload == "embirs"
+    assert parsed.source == "flight"
     assert parsed.timetag == datetime(2024, 1, 15, tzinfo=UTC)
 
 
-def test_science_file_path_l0():
+@pytest.mark.parametrize("source", ["flight", "softsim", "flatsat"])
+def test_science_file_path_l0(source: str):
     """Test parsing an L0 science file, which has no version/descriptor."""
-    parsed = ScienceFilePath.from_filename("ema_l0_sci_emb_20240115.pkts")
+    filename = f"ema_l0_sci_embirs_{source}_20240115.pkts"
+    parsed = ScienceFilePath.from_filename(filename)
 
-    assert parsed.payload == "emb"
+    assert parsed.payload == "embirs"
+    assert parsed.source == source
     assert parsed.data_level == "l0"
     assert parsed.timetag == datetime(2024, 1, 15, tzinfo=UTC)
     assert parsed.descriptor is None
@@ -125,16 +144,31 @@ def test_science_file_path_l0():
     assert parsed.subversion is None
     assert parsed.file_extension == "pkts"
     assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
-        "science/emb/l0/2024/01/ema_l0_sci_emb_20240115.pkts"
+        f"{source}/science/embirs/l0/2024/01/{filename}"
     )
 
 
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "ema_l0_sci_emb_flight_20240115.pkts",  # old three-letter payload code
+        "ema_l0_sci_embirs_20240115.pkts",  # missing source
+        "ema_l0_sci_embirs_ground_20240115.pkts",  # unknown source
+    ],
+)
+def test_science_file_path_l0_invalid(filename: str):
+    """Test that bad payloads and missing or unknown sources are rejected."""
+    with pytest.raises(InvalidEmaFileError):
+        ScienceFilePath.from_filename(filename)
+
+
 def test_science_file_path_l1a():
-    """Test parsing an L1a+ science file using the example from models.py."""
-    filename = "ema_emb_l1a_20321207t122030_observing-mode-info_p_v02-01.fits"
+    """Test parsing an L1a+ science file, which has no source."""
+    filename = "ema_embirs_l1a_20321207t122030_observing-mode-info_p_v02-01.fits"
     parsed = ScienceFilePath.from_filename(filename)
 
-    assert parsed.payload == "emb"
+    assert parsed.payload == "embirs"
+    assert parsed.source is None
     assert parsed.data_level == "l1a"
     assert parsed.timetag == datetime(2032, 12, 7, 12, 20, 30, tzinfo=UTC)
     assert parsed.descriptor == "observing-mode-info"
@@ -144,7 +178,8 @@ def test_science_file_path_l1a():
     assert parsed.file_extension == "fits"
     assert parsed.to_metadata() == {
         "file_name": filename,
-        "payload": "emb",
+        "payload": "embirs",
+        "source": None,
         "data_level": "l1a",
         "timetag": datetime(2032, 12, 7, 12, 20, 30, tzinfo=UTC),
         "descriptor": "observing-mode-info",
@@ -154,7 +189,7 @@ def test_science_file_path_l1a():
         "file_extension": "fits",
     }
     assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
-        f"science/emb/l1a/2032/12/{filename}"
+        f"science/embirs/l1a/2032/12/{filename}"
     )
 
 
@@ -165,14 +200,14 @@ def test_science_file_path_l1a_requires_subversion():
     """
     with pytest.raises(InvalidEmaFileError):
         ScienceFilePath.from_filename(
-            "ema_emb_l1a_20321207t122030_observing-mode-info_p_v01.fits"
+            "ema_embirs_l1a_20321207t122030_observing-mode-info_p_v01.fits"
         )
 
 
 def test_science_file_path_l1a_major_version_zero():
     """Test that a v00-NN pre-deployment version parses, with major 0."""
     parsed = ScienceFilePath.from_filename(
-        "ema_emb_l1a_20321207t122030_observing-mode-info_p_v00-03.fits"
+        "ema_embirs_l1a_20321207t122030_observing-mode-info_p_v00-03.fits"
     )
 
     assert parsed.version == 0
@@ -187,9 +222,10 @@ def test_science_file_path_invalid():
 
 def test_science_file_path_l0_versioned():
     """Test parsing the version suffix the PDC adds once it ingests a file."""
-    parsed = ScienceFilePath.from_filename("ema_l0_sci_emb_20240115_v01.pkts")
+    parsed = ScienceFilePath.from_filename("ema_l0_sci_embirs_flight_20240115_v01.pkts")
 
-    assert parsed.payload == "emb"
+    assert parsed.payload == "embirs"
+    assert parsed.source == "flight"
     assert parsed.data_level == "l0"
     assert parsed.timetag == datetime(2024, 1, 15, tzinfo=UTC)
 
@@ -460,10 +496,10 @@ def test_spice_file_path_unknown_extension():
     ("filename", "expected_type"),
     [
         ("ema_l1_anc_sc_123_20240115.csv", AncillaryFilePath),
-        ("ema_l0_hsk_emb_20240115.pkts", HousekeepingFilePath),
-        ("ema_l0_sci_emb_20240115.pkts", ScienceFilePath),
+        ("ema_l0_hsk_embirs_flight_20240115.pkts", HousekeepingFilePath),
+        ("ema_l0_sci_embirs_softsim_20240115.pkts", ScienceFilePath),
         (
-            "ema_emb_l1a_20321207t122030_observing-mode-info_p_v02-01.fits",
+            "ema_embirs_l1a_20321207t122030_observing-mode-info_p_v02-01.fits",
             ScienceFilePath,
         ),
         ("ema_mission_events_20240101_20240131.xml", MissionEventsFilePath),
@@ -502,4 +538,4 @@ def test_ancillary_file_path_invalid_date():
 def test_science_file_path_l0_invalid_date():
     """Test that an L0 science filename with an invalid date is rejected."""
     with pytest.raises(InvalidEmaFileError, match="failed to parse"):
-        ScienceFilePath.from_filename("ema_l0_sci_emb_20260230.pkts")
+        ScienceFilePath.from_filename("ema_l0_sci_embirs_flight_20260230.pkts")
