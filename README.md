@@ -60,7 +60,7 @@ one of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
 | `manifest` | `<payload>_manifest_<YYYYMMDDHHMM>.txt`, or `moc_manifest_<YYYYMMDDHHMM>.txt` for a payload-less MOC manifest |
 | `housekeeping` | `ema_l0_hsk_<payload>_<source>_<YYYYMMDD>.pkts` |
 | `science` (L0) | `ema_l0_sci_<payload>_<source>_<YYYYMMDD>.pkts` |
-| `science` (L1a+) | `ema_<payload>_<data_level>_<YYYYMMDDtHHMMSS>_<descriptor>_<pred_rec>_v<version>[-<subversion>].fits`, where `<pred_rec>` is `p` (predicted) or `r` (reconstructed) |
+| `science` (L1a+) | `ema_<payload>_<data_level>_<YYYYMMDDtHHMMSS>_<descriptor>_<pred_rec>_v<NN>-<NN>.fits`, where `<pred_rec>` is `p` (predicted) or `r` (reconstructed) and `v<NN>-<NN>` is the two-digit major and minor version, both required (e.g. `ema_embirs_l1a_20240101t000000_observing-mode-info_p_v01-00.fits`) |
 | `mission_events` | `ema_mission_events_<start_date:YYYYMMDD>_<end_date:YYYYMMDD>.xml` |
 
 ### SPICE kernel naming conventions
@@ -252,12 +252,12 @@ with open(f"{kernel_dir}/mission.tm", "w") as f:
 spiceypy.furnsh(f"{kernel_dir}/mission.tm")
 ```
 
-### Upload a file
+### Upload files
 
-Upload a local file, or every file in a directory, to the EMA data archive.
-File names must match a known EMA naming convention, and uploading requires an
-API key with developer-level access — request one from the EMA PDC team.
-Files the API rejects are listed in an error once the rest are uploaded.
+Upload a single local file, or every file in a directory, to the EMA data
+archive. File names must match a known EMA naming convention, and uploading
+requires an API key with developer-level access — request one from the EMA
+PDC team.
 
 ```bash
 $ EMA_API_KEY=<your-api-key> ema-data-access --url <url> upload path/to/ema_l1_anc_sc_1234_20240101.csv
@@ -268,6 +268,9 @@ or with CLI flags
 ```bash
 $ ema-data-access --url <url> --api-key <your-api-key> upload path/to/dir
 ```
+
+A directory's files can be any mix of types. Subdirectories and hidden files
+are skipped, and rejected files are listed in an error after the rest upload.
 
 Under the hood, this requests presigned upload URLs and then PUTs each file,
 equivalent to:

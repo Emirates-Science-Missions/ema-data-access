@@ -47,8 +47,20 @@ def _make_request(request: requests.PreparedRequest, authenticate: bool = True):
 
 
 def _get_base_url() -> str:
-    """Get the base URL of the EMA data-access API."""
-    return ema_data_access.config["DATA_ACCESS_URL"]
+    """Get the base URL of the EMA data-access API.
+
+    Raises
+    ------
+    EmaDataAccessError
+        If no URL has been configured.
+    """
+    url = ema_data_access.config["DATA_ACCESS_URL"]
+    if not url:
+        raise EmaDataAccessError(
+            "No data-access URL configured. Set the EMA_DATA_ACCESS_URL "
+            "environment variable or pass --url."
+        )
+    return url
 
 
 def _normalize_date_param(value: str | None) -> str | None:
