@@ -29,6 +29,19 @@ def test_base_url(monkeypatch):
     assert _get_base_url() == "https://api.test.com"
 
 
+def test_base_url_missing(monkeypatch):
+    """Test that a missing base URL raises a clear error.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.fixture
+        Fixture for monkeypatching module/global state.
+    """
+    monkeypatch.setitem(ema_data_access.config, "DATA_ACCESS_URL", None)
+    with pytest.raises(EmaDataAccessError, match="EMA_DATA_ACCESS_URL"):
+        _get_base_url()
+
+
 def test_redirect(mock_send_request):
     """Verify that we follow a 307 redirect from newly created s3 buckets.
 

@@ -220,7 +220,7 @@ class ScienceFilePath(EmaFilePath):
 
     L0:   ema_l0_sci_<payload>_<source>_YYYYMMDD.pkts
     L1a+: ema_<payload>_<data_level>_YYYYMMDDtHHMMSS_<descriptor>_<pred_rec>_
-          v<version>(-<subversion>).fits
+          v<NN>-<NN>.fits
     """
 
     payload: str
