@@ -51,7 +51,7 @@ Every file in the EMA archive must match one of the naming conventions
 below.
 
 `<payload>` is one of `rept`, `mista`, `embirs`, `emacs`, `prb`, `cnc`, `pnc`,
-`irc`. `<source>` is one of `flight`, `softsim`, `flatsat`. `<data_level>` is
+`irc`, `mac`, `gnc`. `<source>` is one of `flight`, `softsim`, `flatsat`. `<data_level>` is
 one of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
 
 | Table | Convention |
