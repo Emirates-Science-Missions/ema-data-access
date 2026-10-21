@@ -184,7 +184,7 @@ def query_housekeeping(  # noqa: PLR0913
         Exact file name to match.
     payload : str, optional
         Payload to match, one of "rept", "mista", "embirs",
-        "emacs", "prb", "cnc", "pnc", "irc".
+        "emacs", "prb", "cnc", "pnc", "irc", "mac", "gnc".
     timetag_start : str, optional
         Only include files with timetag on or after this, in YYYYMMDD or
         YYYY-MM-DD format.
@@ -236,7 +236,7 @@ def query_science(  # noqa: PLR0913
         Exact file name to match.
     payload : str, optional
         Payload to match, one of "rept", "mista", "embirs",
-        "emacs", "prb", "cnc", "pnc", "irc".
+        "emacs", "prb", "cnc", "pnc", "irc", "mac", "gnc".
     data_level : str, optional
         Data level to match, one of "l0", "l1", "l1a", "l1b", "l2", "l2a",
         "l2b", "l3", "ql".
@@ -342,7 +342,7 @@ def query_manifest(
         Exact file name to match.
     payload : str, optional
         Payload to match, one of "rept", "mista", "embirs",
-        "emacs", "prb", "cnc", "pnc", "irc", "moc".
+        "emacs", "prb", "cnc", "pnc", "irc", "mac", "gnc", "moc".
     timetag_start : str, optional
         Only include files with timetag on or after this, in YYYYMMDDHHMM
         or YYYY-MM-DDTHH:MM:SS format.

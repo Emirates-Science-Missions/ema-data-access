@@ -162,6 +162,21 @@ def test_science_file_path_l0_invalid(filename: str):
         ScienceFilePath.from_filename(filename)
 
 
+@pytest.mark.parametrize("payload", ["mac", "gnc"])
+def test_mac_gnc_payloads(payload: str):
+    """Test that the mac and gnc payload codes are accepted in every convention."""
+    hsk = HousekeepingFilePath.from_filename(
+        f"ema_l0_hsk_{payload}_flight_20240115.pkts"
+    )
+    assert hsk.payload == payload
+
+    sci = ScienceFilePath.from_filename(f"ema_l0_sci_{payload}_flight_20240115.pkts")
+    assert sci.payload == payload
+
+    manifest = ManifestFilePath.from_filename(f"{payload}_manifest_202401151230.txt")
+    assert manifest.payload == payload
+
+
 def test_science_file_path_l1a():
     """Test parsing an L1a+ science file, which has no source."""
     filename = "ema_embirs_l1a_20321207t122030_observing-mode-info_p_v02-01.fits"

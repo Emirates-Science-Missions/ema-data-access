@@ -9,7 +9,7 @@ from typing import ClassVar
 
 import ema_data_access
 
-_PAYLOADS = "rept|mista|embirs|emacs|prb|cnc|pnc|irc"
+_PAYLOADS = "rept|mista|embirs|emacs|prb|cnc|pnc|irc|mac|gnc"
 _MANIFEST_PAYLOADS = f"moc|{_PAYLOADS}"
 _DATA_LEVELS = "l1|l1a|l1b|l2|l2a|l2b|l3|ql"
 # Origin of an L0 housekeeping / science file.
