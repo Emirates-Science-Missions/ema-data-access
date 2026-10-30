@@ -2,6 +2,8 @@
 
 Lightweight Python tools to query and access EMA data.
 
+Using IDL instead of Python? See [IDL.md](IDL.md).
+
 ## Setup
 
 ### Python environment (Poetry)
