@@ -139,6 +139,7 @@ def test_science_file_path_l0(source: str):
     assert parsed.data_level == "l0"
     assert parsed.timetag == datetime(2024, 1, 15, tzinfo=UTC)
     assert parsed.descriptor is None
+    assert parsed.orbit_number is None
     assert parsed.pred_rec is None
     assert parsed.version is None
     assert parsed.subversion is None
@@ -179,7 +180,9 @@ def test_mac_gnc_payloads(payload: str):
 
 def test_science_file_path_l1a():
     """Test parsing an L1a+ science file, which has no source."""
-    filename = "ema_embirs_l1a_20321207t122030_observing-mode-info_p_v02-01.fits"
+    filename = (
+        "ema_embirs_l1a_20321207t122030_observing-mode-info_orbit000_p_v02-01.fits"
+    )
     parsed = ScienceFilePath.from_filename(filename)
 
     assert parsed.payload == "embirs"
@@ -187,6 +190,7 @@ def test_science_file_path_l1a():
     assert parsed.data_level == "l1a"
     assert parsed.timetag == datetime(2032, 12, 7, 12, 20, 30, tzinfo=UTC)
     assert parsed.descriptor == "observing-mode-info"
+    assert parsed.orbit_number == 0
     assert parsed.pred_rec == "p"
     assert parsed.version == 2
     assert parsed.subversion == 1
@@ -198,6 +202,7 @@ def test_science_file_path_l1a():
         "data_level": "l1a",
         "timetag": datetime(2032, 12, 7, 12, 20, 30, tzinfo=UTC),
         "descriptor": "observing-mode-info",
+        "orbit_number": 0,
         "pred_rec": "p",
         "version": 2,
         "subversion": 1,
@@ -208,6 +213,146 @@ def test_science_file_path_l1a():
     )
 
 
+L0_PAYLOADS = ["mista", "embirs", "emacs", "rept", "gnc", "prb", "mac"]
+L1_PAYLOADS = [
+    "mista",
+    "embirs",
+    "emacs",
+    "pnac",
+    "cnac",
+    "irc",
+    "reptile-3",
+    "mac",
+    "prb",
+]
+
+
+@pytest.mark.parametrize("payload", L0_PAYLOADS)
+def test_l0_payloads(payload: str):
+    """Test that every L0 payload code parses in L0 science and housekeeping.
+
+    Parameters
+    ----------
+    payload : str
+        L0 payload code under test.
+    """
+    sci = ScienceFilePath.from_filename(f"ema_l0_sci_{payload}_flight_20240115.pkts")
+    hsk = HousekeepingFilePath.from_filename(
+        f"ema_l0_hsk_{payload}_flight_20240115.pkts"
+    )
+
+    assert sci.payload == payload
+    assert hsk.payload == payload
+
+
+@pytest.mark.parametrize("payload", ["pnac", "cnac", "irc", "reptile-3", "pnc"])
+def test_l0_rejects_non_l0_payloads(payload: str):
+    """Test that upper-level-only and retired codes are rejected in L0 names.
+
+    Parameters
+    ----------
+    payload : str
+        Payload code that isn't valid for L0.
+    """
+    with pytest.raises(InvalidEmaFileError):
+        ScienceFilePath.from_filename(f"ema_l0_sci_{payload}_flight_20240115.pkts")
+    with pytest.raises(InvalidEmaFileError):
+        HousekeepingFilePath.from_filename(f"ema_l0_hsk_{payload}_flight_20240115.pkts")
+
+
+@pytest.mark.parametrize("payload", L1_PAYLOADS)
+def test_l1_and_manifest_payloads(payload: str):
+    """Test that every upper-level payload code parses in L1a+ and manifests.
+
+    Parameters
+    ----------
+    payload : str
+        Upper-level payload code under test.
+    """
+    sci = ScienceFilePath.from_filename(
+        f"ema_{payload}_l1a_20321207t122030_flux_orbit000_p_v01-00.fits"
+    )
+    manifest = ManifestFilePath.from_filename(f"{payload}_manifest_202401151230.txt")
+
+    assert sci.payload == payload
+    assert manifest.payload == payload
+
+
+@pytest.mark.parametrize("payload", ["rept", "gnc", "cnc", "pnc"])
+def test_l1_and_manifest_reject_non_l1_payloads(payload: str):
+    """Test that L0-only and retired codes are rejected in L1a+ and manifests.
+
+    Parameters
+    ----------
+    payload : str
+        Payload code that isn't valid for upper-level names.
+    """
+    with pytest.raises(InvalidEmaFileError):
+        ScienceFilePath.from_filename(
+            f"ema_{payload}_l1a_20321207t122030_flux_orbit000_p_v01-00.fits"
+        )
+    with pytest.raises(InvalidEmaFileError):
+        ManifestFilePath.from_filename(f"{payload}_manifest_202401151230.txt")
+
+
+def test_science_file_path_l1a_optional_fields():
+    """Test an L1a+ name with a date-only start, no descriptor, and "na"."""
+    parsed = ScienceFilePath.from_filename(
+        "ema_reptile-3_l2_20321207_orbit012_na_v01-00.cdf"
+    )
+
+    assert parsed.timetag == datetime(2032, 12, 7, tzinfo=UTC)
+    assert parsed.descriptor is None
+    assert parsed.orbit_number == 12
+    assert parsed.pred_rec == "na"
+    assert parsed.file_extension == "cdf"
+
+
+@pytest.mark.parametrize("ext", ["fits", "png", "cdf", "ascii", "csv"])
+def test_science_file_path_l1a_extensions(ext: str):
+    """Test that every allowed L1a+ file extension parses.
+
+    Parameters
+    ----------
+    ext : str
+        File extension under test.
+    """
+    parsed = ScienceFilePath.from_filename(
+        f"ema_embirs_l1a_20321207t122030_orbit000_p_v01-00.{ext}"
+    )
+
+    assert parsed.file_extension == ext
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        # missing orbit field
+        "ema_embirs_l1a_20321207t122030_mode-descriptor_p_v01-00.fits",
+        # orbit must be exactly three digits
+        "ema_embirs_l1a_20321207t122030_orbit01_p_v01-00.fits",
+        "ema_embirs_l1a_20321207t122030_orbit0001_p_v01-00.fits",
+        # start time truncated to the hour or minute
+        "ema_embirs_l1a_20321207t12_orbit000_p_v01-00.fits",
+        "ema_embirs_l1a_20321207t1220_orbit000_p_v01-00.fits",
+        # unknown predict/reconstruct flag
+        "ema_embirs_l1a_20321207t122030_orbit000_x_v01-00.fits",
+        # pkts is L0 only
+        "ema_embirs_l1a_20321207t122030_orbit000_p_v01-00.pkts",
+    ],
+)
+def test_science_file_path_l1a_invalid(filename: str):
+    """Test that L1a+ names breaking the convention are rejected.
+
+    Parameters
+    ----------
+    filename : str
+        Invalid L1a+ file name.
+    """
+    with pytest.raises(InvalidEmaFileError):
+        ScienceFilePath.from_filename(filename)
+
+
 def test_science_file_path_l1a_requires_subversion():
     """Test that an L1a+ name without a subversion is rejected.
 
@@ -215,14 +360,14 @@ def test_science_file_path_l1a_requires_subversion():
     """
     with pytest.raises(InvalidEmaFileError):
         ScienceFilePath.from_filename(
-            "ema_embirs_l1a_20321207t122030_observing-mode-info_p_v01.fits"
+            "ema_embirs_l1a_20321207t122030_observing-mode-info_orbit000_p_v01.fits"
         )
 
 
 def test_science_file_path_l1a_major_version_zero():
     """Test that a v00-NN pre-deployment version parses, with major 0."""
     parsed = ScienceFilePath.from_filename(
-        "ema_embirs_l1a_20321207t122030_observing-mode-info_p_v00-03.fits"
+        "ema_embirs_l1a_20321207t122030_observing-mode-info_orbit000_p_v00-03.fits"
     )
 
     assert parsed.version == 0
@@ -514,7 +659,7 @@ def test_spice_file_path_unknown_extension():
         ("ema_l0_hsk_embirs_flight_20240115.pkts", HousekeepingFilePath),
         ("ema_l0_sci_embirs_softsim_20240115.pkts", ScienceFilePath),
         (
-            "ema_embirs_l1a_20321207t122030_observing-mode-info_p_v02-01.fits",
+            "ema_embirs_l1a_20321207t122030_observing-mode-info_orbit000_p_v02-01.fits",
             ScienceFilePath,
         ),
         ("ema_mission_events_20240101_20240131.xml", MissionEventsFilePath),

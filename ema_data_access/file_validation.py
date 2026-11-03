@@ -9,8 +9,12 @@ from typing import ClassVar
 
 import ema_data_access
 
-_PAYLOADS = "rept|mista|embirs|emacs|prb|cnc|pnc|irc|mac|gnc"
-_MANIFEST_PAYLOADS = f"moc|{_PAYLOADS}"
+# L0 science and housekeeping names (MOC-PDC ICD) and upper-level science
+# names (PTF-PDC ICD) use different payload codes.
+_L0_PAYLOADS = "mista|embirs|emacs|rept|gnc|prb|mac"
+_L1_PAYLOADS = "mista|embirs|emacs|pnac|cnac|irc|reptile-3|mac|prb"
+# PTF manifests use the upper-level codes; MOC manifests use "moc".
+_MANIFEST_PAYLOADS = f"moc|{_L1_PAYLOADS}"
 _DATA_LEVELS = "l1|l1a|l1b|l2|l2a|l2b|l3|ql"
 # Origin of an L0 housekeeping / science file.
 _SOURCES = "flight|softsim|flatsat"
@@ -185,7 +189,7 @@ class HousekeepingFilePath(EmaFilePath):
     timetag: datetime
 
     _PATTERN: ClassVar[re.Pattern] = re.compile(
-        rf"ema_l0_hsk_(?P<payload>{_PAYLOADS})_(?P<source>{_SOURCES})_"
+        rf"ema_l0_hsk_(?P<payload>{_L0_PAYLOADS})_(?P<source>{_SOURCES})_"
         r"(?P<timetag>\d{8})(?:_v\d+)?\.pkts"
     )
 
@@ -219,8 +223,11 @@ class ScienceFilePath(EmaFilePath):
     """Covers two conventions that both land in the `science` table.
 
     L0:   ema_l0_sci_<payload>_<source>_YYYYMMDD.pkts
-    L1a+: ema_<payload>_<data_level>_YYYYMMDDtHHMMSS_<descriptor>_<pred_rec>_
-          v<NN>-<NN>.fits
+    L1a+: ema_<payload>_<data_level>_<start>[_<descriptor>]_orbit<NNN>_
+          <pred_rec>_v<NN>-<NN>.<fits|png|cdf|ascii|csv>
+
+    For L1a+, <start> is YYYYMMDD or YYYYMMDDtHHMMSS, the descriptor is
+    optional, and <pred_rec> is "p", "r", or "na" (no ephemeris used).
     """
 
     payload: str
@@ -228,21 +235,23 @@ class ScienceFilePath(EmaFilePath):
     data_level: str
     timetag: datetime
     descriptor: str | None
+    orbit_number: int | None
     pred_rec: str | None
     version: int | None
     subversion: int | None
     file_extension: str
 
     _L0_PATTERN: ClassVar[re.Pattern] = re.compile(
-        rf"ema_l0_sci_(?P<payload>{_PAYLOADS})_(?P<source>{_SOURCES})_"
+        rf"ema_l0_sci_(?P<payload>{_L0_PAYLOADS})_(?P<source>{_SOURCES})_"
         rf"(?P<timetag>\d{{8}})(?:_v\d+)?"
         rf"\.(?P<file_extension>pkts)"
     )
     _L1_PATTERN: ClassVar[re.Pattern] = re.compile(
-        rf"ema_(?P<payload>{_PAYLOADS})_(?P<data_level>{_DATA_LEVELS})_"
-        r"(?P<timetag>\d{8}t\d{6})_(?P<descriptor>[a-z0-9\-]+)_"
-        r"(?P<pred_rec>p|r)_v(?P<version>\d{2})-(?P<subversion>\d{2})"
-        r"\.(?P<file_extension>fits)"
+        rf"ema_(?P<payload>{_L1_PAYLOADS})_(?P<data_level>{_DATA_LEVELS})_"
+        r"(?P<timetag>\d{8}(?:t\d{6})?)_(?:(?P<descriptor>[a-z0-9\-]+)_)?"
+        r"orbit(?P<orbit_number>\d{3})_"
+        r"(?P<pred_rec>p|r|na)_v(?P<version>\d{2})-(?P<subversion>\d{2})"
+        r"\.(?P<file_extension>fits|png|cdf|ascii|csv)"
     )
 
     @classmethod
@@ -268,6 +277,7 @@ class ScienceFilePath(EmaFilePath):
                     data_level="l0",
                     timetag=_parse_ymd(match["timetag"]),
                     descriptor=None,
+                    orbit_number=None,
                     pred_rec=None,
                     version=None,
                     subversion=None,
@@ -280,8 +290,13 @@ class ScienceFilePath(EmaFilePath):
                     # L1a+ names don't carry a source.
                     source=None,
                     data_level=match["data_level"],
-                    timetag=_parse_ymdthms(match["timetag"]),
+                    timetag=(
+                        _parse_ymdthms(match["timetag"])
+                        if "t" in match["timetag"]
+                        else _parse_ymd(match["timetag"])
+                    ),
                     descriptor=match["descriptor"],
+                    orbit_number=int(match["orbit_number"]),
                     pred_rec=match["pred_rec"],
                     version=int(match["version"]),
                     subversion=int(match["subversion"]),
@@ -302,6 +317,7 @@ class ScienceFilePath(EmaFilePath):
             "data_level": self.data_level,
             "timetag": self.timetag,
             "descriptor": self.descriptor,
+            "orbit_number": self.orbit_number,
             "pred_rec": self.pred_rec,
             "version": self.version,
             "subversion": self.subversion,
