@@ -52,8 +52,10 @@ Using IDL instead of Python? See the [IDL guide](https://github.com/Emirates-Sci
 Every file in the EMA archive must match one of the naming conventions
 below.
 
-`<payload>` is one of `rept`, `mista`, `embirs`, `emacs`, `prb`, `cnc`, `pnc`,
-`irc`, `mac`, `gnc`. `<source>` is one of `flight`, `softsim`, `flatsat`. `<data_level>` is
+`<payload>` depends on the convention: L0 science and housekeeping names use
+`mista`, `embirs`, `emacs`, `rept`, `gnc`, `prb`, `mac`; upper-level (L1a+) science
+and manifest names use `mista`, `embirs`, `emacs`, `pnac`, `cnac`, `irc`,
+`reptile-3`, `mac`, `prb` (manifests also allow `moc`). `<source>` is one of `flight`, `softsim`, `flatsat`. `<data_level>` is
 one of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
 
 | Table | Convention |
@@ -62,7 +64,7 @@ one of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
 | `manifest` | `<payload>_manifest_<YYYYMMDDHHMM>.txt`, or `moc_manifest_<YYYYMMDDHHMM>.txt` for a payload-less MOC manifest |
 | `housekeeping` | `ema_l0_hsk_<payload>_<source>_<YYYYMMDD>.pkts` |
 | `science` (L0) | `ema_l0_sci_<payload>_<source>_<YYYYMMDD>.pkts` |
-| `science` (L1a+) | `ema_<payload>_<data_level>_<YYYYMMDDtHHMMSS>_<descriptor>_<pred_rec>_v<NN>-<NN>.fits`, where `<pred_rec>` is `p` (predicted) or `r` (reconstructed) and `v<NN>-<NN>` is the two-digit major and minor version, both required (e.g. `ema_embirs_l1a_20240101t000000_observing-mode-info_p_v01-00.fits`) |
+| `science` (L1a+) | `ema_<payload>_<data_level>_<start>[_<descriptor>]_orbit<NNN>_<pred_rec>_v<NN>-<NN>.<ext>`, where `<start>` is `YYYYMMDD` or `YYYYMMDDtHHMMSS`, the descriptor is optional, `orbit<NNN>` is the three-digit orbit number (`orbit000` until Justitia), `<pred_rec>` is `p` (predicted), `r` (reconstructed), or `na` (no ephemeris used), `v<NN>-<NN>` is the two-digit major and minor version, both required, and `<ext>` is one of `fits`, `png`, `cdf`, `ascii`, `csv` (e.g. `ema_embirs_l1a_20321207t122030_mode-descriptor_orbit000_p_v02-01.fits`) |
 | `mission_events` | `ema_mission_events_<start_date:YYYYMMDD>_<end_date:YYYYMMDD>.xml` |
 
 ### SPICE kernel naming conventions
