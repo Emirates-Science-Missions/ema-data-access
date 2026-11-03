@@ -121,7 +121,18 @@ def add_query_housekeeping_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--payload",
         type=str,
-        choices=["rept", "mista", "embirs", "emacs", "prb", "cnc", "pnc", "irc"],
+        choices=[
+            "rept",
+            "mista",
+            "embirs",
+            "emacs",
+            "prb",
+            "cnc",
+            "pnc",
+            "irc",
+            "mac",
+            "gnc",
+        ],
         help="Payload to match.",
     )
     subparser.add_argument(
@@ -177,7 +188,18 @@ def add_query_science_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--payload",
         type=str,
-        choices=["rept", "mista", "embirs", "emacs", "prb", "cnc", "pnc", "irc"],
+        choices=[
+            "rept",
+            "mista",
+            "embirs",
+            "emacs",
+            "prb",
+            "cnc",
+            "pnc",
+            "irc",
+            "mac",
+            "gnc",
+        ],
         help="Payload to match.",
     )
     subparser.add_argument(
@@ -293,7 +315,19 @@ def add_query_manifest_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--payload",
         type=str,
-        choices=["rept", "mista", "embirs", "emacs", "prb", "cnc", "pnc", "irc", "moc"],
+        choices=[
+            "rept",
+            "mista",
+            "embirs",
+            "emacs",
+            "prb",
+            "cnc",
+            "pnc",
+            "irc",
+            "mac",
+            "gnc",
+            "moc",
+        ],
         help="Payload to match. 'moc' matches payload-less MOC manifests.",
     )
     subparser.add_argument(
