@@ -47,7 +47,7 @@ the [README](README.md)):
 
 | Endpoint | Example filters |
 | --- | --- |
-| `query_science` | `payload`, `data_level`, `timetag_start`, `timetag_end`, `descriptor`, `pred_rec`, `file_extension`, `major_version`, `minor_version` |
+| `query_science` | `payload`, `data_level`, `timetag_start`, `timetag_end`, `descriptor`, `orbit_number`, `pred_rec`, `file_extension`, `major_version`, `minor_version` |
 | `query_housekeeping` | `payload`, `timetag_start`, `timetag_end`, `version` |
 | `query_ancillary` | `apid`, `timetag_start`, `timetag_end`, `file_extension`, `version` |
 | `query_mission_events` | `start_date`, `end_date`, `version` |
