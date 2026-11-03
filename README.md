@@ -2,7 +2,7 @@
 
 Lightweight Python tools to query and access EMA data.
 
-Using IDL instead of Python? See [IDL.md](IDL.md).
+Using IDL instead of Python? See the [IDL guide](https://github.com/Emirates-Science-Missions/ema-data-access/blob/main/IDL.md).
 
 ## Setup
 
