@@ -165,7 +165,11 @@ def test_science_file_path_l0_invalid(filename: str):
 
 @pytest.mark.parametrize("payload", ["mac", "gnc"])
 def test_mac_gnc_payloads(payload: str):
-    """Test that the mac and gnc payload codes are accepted in every convention."""
+    """Test that the mac and gnc payload codes are accepted in L0 names.
+
+    Manifests use upper-level codes, so only mac is a valid manifest payload;
+    gnc manifests are covered by test_l1_and_manifest_reject_non_l1_payloads.
+    """
     hsk = HousekeepingFilePath.from_filename(
         f"ema_l0_hsk_{payload}_flight_20240115.pkts"
     )
@@ -174,8 +178,11 @@ def test_mac_gnc_payloads(payload: str):
     sci = ScienceFilePath.from_filename(f"ema_l0_sci_{payload}_flight_20240115.pkts")
     assert sci.payload == payload
 
-    manifest = ManifestFilePath.from_filename(f"{payload}_manifest_202401151230.txt")
-    assert manifest.payload == payload
+    if payload == "mac":
+        manifest = ManifestFilePath.from_filename(
+            f"{payload}_manifest_202401151230.txt"
+        )
+        assert manifest.payload == payload
 
 
 def test_science_file_path_l1a():
