@@ -78,7 +78,9 @@ function ema_http, url, API_KEY=api_key, POST=body, PUT=put_file, FILENAME=filen
 
   ; Every response goes to a scratch file first, so a failed request's
   ; error body can be read back and FILENAME is never left half-written.
-  scratch = filepath('ema_response.tmp', /TMP)
+  ; Downloads use FILENAME + '.part'; text responses (queries) use a file
+  ; in the temp directory.
+  scratch = keyword_set(filename) ? filename + '.part' : filepath('ema_response.tmp', /TMP)
   file_delete, scratch, /ALLOW_NONEXISTENT
 
   catch, err
@@ -103,7 +105,11 @@ function ema_http, url, API_KEY=api_key, POST=body, PUT=put_file, FILENAME=filen
   catch, /cancel
   obj_destroy, o
 
-  if ~keyword_set(filename) then return, ema_read_text(scratch)
+  if ~keyword_set(filename) then begin
+    text = ema_read_text(scratch)
+    file_delete, scratch
+    return, text
+  endif
   file_move, scratch, filename, /OVERWRITE
   return, filename
 end
