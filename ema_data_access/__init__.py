@@ -10,6 +10,7 @@ from pathlib import Path
 
 from ema_data_access.file_validation import (
     AncillaryFilePath,
+    CalibrationFilePath,
     EmaFilePath,
     HousekeepingFilePath,
     ManifestFilePath,
@@ -36,6 +37,7 @@ from ema_data_access.processing_input import (
 
 __all__ = [
     "AncillaryFilePath",
+    "CalibrationFilePath",
     "EmaFilePath",
     "HousekeepingFilePath",
     "ManifestFilePath",

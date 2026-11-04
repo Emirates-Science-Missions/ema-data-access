@@ -53,8 +53,8 @@ Every file in the EMA archive must match one of the naming conventions
 below.
 
 `<payload>` depends on the convention: L0 science and housekeeping names use
-`mista`, `embirs`, `emacs`, `rept`, `gnc`, `prb`, `mac`; upper-level (L1a+) science
-and manifest names use `mista`, `embirs`, `emacs`, `pnac`, `cnac`, `irc`,
+`mista`, `embirs`, `emacs`, `rept`, `gnc`, `prb`, `mac`; upper-level (L1a+) science,
+calibration, and manifest names use `mista`, `embirs`, `emacs`, `pnac`, `cnac`, `irc`,
 `reptile-3`, `mac`, `prb` (manifests also allow `moc`). `<source>` is one of `flight`, `softsim`, `flatsat`. `<data_level>` is
 one of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
 
@@ -65,6 +65,7 @@ one of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
 | `housekeeping` | `ema_l0_hsk_<payload>_<source>_<YYYYMMDD>.pkts` |
 | `science` (L0) | `ema_l0_sci_<payload>_<source>_<YYYYMMDD>.pkts` |
 | `science` (L1a+) | `ema_<payload>_<data_level>_<start>[_<descriptor>]_orbit<NNN>_<pred_rec>_v<NN>-<NN>.<ext>`, where `<start>` is `YYYYMMDD` or `YYYYMMDDtHHMMSS`, the descriptor is optional, `orbit<NNN>` is the three-digit orbit number (`orbit000` until Justitia), `<pred_rec>` is `p` (predicted), `r` (reconstructed), or `na` (no ephemeris used), `v<NN>-<NN>` is the two-digit major and minor version, both required, and `<ext>` is one of `fits`, `png`, `cdf`, `ascii`, `csv` (e.g. `ema_embirs_l1a_20321207t122030_mode-descriptor_orbit000_p_v02-01.fits`) |
+| `calibration` | `ema_cal_<payload>_<descriptor>_<start>_v<NN>-<NN>.<ext>`, for scientist-supplied calibration and reference files, where the descriptor is required, `<start>` is `YYYYMMDD` or `YYYYMMDDtHHMMSS` (the date the file applies from), `v<NN>-<NN>` is the two-digit major and minor version, both required, and `<ext>` is one of `csv`, `fits`, `cdf`, `txt`, `ascii`, `json` (e.g. `ema_cal_mista_dark-frame_20240101_v01-00.fits`) |
 | `mission_events` | `ema_mission_events_<start_date:YYYYMMDD>_<end_date:YYYYMMDD>.xml` |
 
 ### SPICE kernel naming conventions

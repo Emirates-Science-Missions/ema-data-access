@@ -336,6 +336,62 @@ class ScienceFilePath(EmaFilePath):
 
 
 @dataclass
+class CalibrationFilePath(EmaFilePath):
+    """ema_cal_<payload>_<descriptor>_<start>_v<NN>-<NN>.<ext>.
+
+    Scientist-supplied calibration/reference files. <payload> uses the
+    upper-level (PTF-PDC ICD) codes, <start> is YYYYMMDD or YYYYMMDDtHHMMSS
+    (the date the file applies from), and the producer supplies the
+    two-digit major and minor version.
+    """
+
+    payload: str
+    descriptor: str
+    timetag: datetime
+    version: int
+    subversion: int
+    file_extension: str
+
+    _PATTERN: ClassVar[re.Pattern] = re.compile(
+        rf"ema_cal_(?P<payload>{_L1_PAYLOADS})_(?P<descriptor>[a-z0-9\-]+)_"
+        r"(?P<timetag>\d{8}(?:t\d{6})?)_"
+        r"v(?P<version>\d{2})-(?P<subversion>\d{2})"
+        r"\.(?P<file_extension>csv|fits|cdf|txt|ascii|json)"
+    )
+
+    @classmethod
+    def _extract_fields(cls, match: re.Match) -> dict:
+        timetag = match["timetag"]
+        return {
+            "payload": match["payload"],
+            "descriptor": match["descriptor"],
+            "timetag": (
+                _parse_ymdthms(timetag) if "t" in timetag else _parse_ymd(timetag)
+            ),
+            "version": int(match["version"]),
+            "subversion": int(match["subversion"]),
+            "file_extension": match["file_extension"],
+        }
+
+    def _extra_metadata(self) -> dict:
+        return {
+            "payload": self.payload,
+            "descriptor": self.descriptor,
+            "timetag": self.timetag,
+            "version": self.version,
+            "subversion": self.subversion,
+            "file_extension": self.file_extension,
+        }
+
+    def construct_path(self) -> Path:
+        """See base class."""
+        return (
+            ema_data_access.config["DATA_DIR"]
+            / f"calibration/{self.payload}/{self.filename}"
+        )
+
+
+@dataclass
 class MissionEventsFilePath(EmaFilePath):
     """ema_mission_events_YYYYMMDD_YYYYMMDD.xml."""
 
@@ -594,6 +650,7 @@ def generate_ema_file_path(filename: str) -> EmaFilePath:
         AncillaryFilePath.from_filename,
         HousekeepingFilePath.from_filename,
         ScienceFilePath.from_filename,
+        CalibrationFilePath.from_filename,
         MissionEventsFilePath.from_filename,
         ManifestFilePath.from_filename,
         SPICEFilePath.from_filename,

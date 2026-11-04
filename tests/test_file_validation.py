@@ -7,6 +7,7 @@ import pytest
 import ema_data_access
 from ema_data_access.file_validation import (
     AncillaryFilePath,
+    CalibrationFilePath,
     HousekeepingFilePath,
     InvalidEmaFileError,
     ManifestFilePath,
@@ -218,6 +219,75 @@ def test_science_file_path_l1a():
     assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
         f"science/embirs/l1a/2032/12/{filename}"
     )
+
+
+def test_calibration_file_path():
+    """Test parsing, metadata, and path construction for a calibration file."""
+    filename = "ema_cal_mista_dark-frame_20240101_v01-00.fits"
+    parsed = CalibrationFilePath.from_filename(filename)
+
+    assert parsed.to_metadata() == {
+        "file_name": filename,
+        "payload": "mista",
+        "descriptor": "dark-frame",
+        "timetag": datetime(2024, 1, 1, tzinfo=UTC),
+        "version": 1,
+        "subversion": 0,
+        "file_extension": "fits",
+    }
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        f"calibration/mista/{filename}"
+    )
+
+
+def test_calibration_file_path_datetime_start():
+    """Test that a YYYYMMDDtHHMMSS start is parsed to the second."""
+    parsed = CalibrationFilePath.from_filename(
+        "ema_cal_reptile-3_gain-table_20321207t122030_v02-11.json"
+    )
+    assert parsed.payload == "reptile-3"
+    assert parsed.timetag == datetime(2032, 12, 7, 12, 20, 30, tzinfo=UTC)
+    assert (parsed.version, parsed.subversion) == (2, 11)
+
+
+@pytest.mark.parametrize("ext", ["csv", "fits", "cdf", "txt", "ascii", "json"])
+def test_calibration_file_path_extensions(ext: str):
+    """Test every accepted calibration file extension."""
+    parsed = CalibrationFilePath.from_filename(
+        f"ema_cal_embirs_flat-field_20240101_v01-00.{ext}"
+    )
+    assert parsed.file_extension == ext
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        # L0-only payload code.
+        "ema_cal_gnc_dark-frame_20240101_v01-00.fits",
+        # Missing descriptor.
+        "ema_cal_mista_20240101_v01-00.fits",
+        # Missing subversion.
+        "ema_cal_mista_dark-frame_20240101_v01.fits",
+        # Single-digit version.
+        "ema_cal_mista_dark-frame_20240101_v1-00.fits",
+        # Unsupported extension.
+        "ema_cal_mista_dark-frame_20240101_v01-00.pkts",
+        # Underscore in descriptor.
+        "ema_cal_mista_dark_frame_20240101_v01-00.fits",
+    ],
+)
+def test_calibration_file_path_invalid(filename: str):
+    """Test that malformed calibration names are rejected."""
+    with pytest.raises(InvalidEmaFileError):
+        CalibrationFilePath.from_filename(filename)
+
+
+def test_calibration_file_path_invalid_date():
+    """Test that a pattern match with an impossible date fails to parse."""
+    with pytest.raises(InvalidEmaFileError, match="failed to parse"):
+        CalibrationFilePath.from_filename(
+            "ema_cal_mista_dark-frame_20240230_v01-00.fits"
+        )
 
 
 L0_PAYLOADS = ["mista", "embirs", "emacs", "rept", "gnc", "prb", "mac"]
@@ -669,6 +739,7 @@ def test_spice_file_path_unknown_extension():
             "ema_embirs_l1a_20321207t122030_observing-mode-info_orbit000_p_v02-01.fits",
             ScienceFilePath,
         ),
+        ("ema_cal_mista_dark-frame_20240101_v01-00.fits", CalibrationFilePath),
         ("ema_mission_events_20240101_20240131.xml", MissionEventsFilePath),
         ("moc_manifest_202401151230.txt", ManifestFilePath),
         ("ema_sclk_00001.tsc", SPICEFilePath),
