@@ -226,6 +226,8 @@ def test_cli_metakernel(capsys):
     mock_metakernel.assert_called_once_with(
         start_time=0.0,
         end_time=100000.0,
+        start_datetime=None,
+        end_datetime=None,
         kernel_types=None,
         list_files=False,
         require_coverage=False,
@@ -260,6 +262,8 @@ def test_cli_metakernel_list_files(capsys):
     mock_metakernel.assert_called_once_with(
         start_time=0.0,
         end_time=100000.0,
+        start_datetime=None,
+        end_datetime=None,
         kernel_types="ephem_reconstructed,ephem_predicted",
         list_files=True,
         require_coverage=False,
@@ -314,3 +318,47 @@ def test_cli_download(capsys, extra_args: list, expected_destination: Path):
         ["naif0012.tls"], destination=expected_destination
     )
     assert "Downloaded" in capsys.readouterr().out
+
+
+def test_cli_metakernel_datetimes():
+    """Test that 'metakernel' accepts datetime window ends."""
+    with patch.object(
+        sys,
+        "argv",
+        [
+            "ema-data-access",
+            "metakernel",
+            "--start-datetime",
+            "20260101",
+            "--end-time",
+            "100000",
+        ],
+    ):
+        with patch.object(
+            ema_data_access, "metakernel", return_value=""
+        ) as mock_metakernel:
+            main()
+
+    mock_metakernel.assert_called_once_with(
+        start_time=None,
+        end_time=100000.0,
+        start_datetime="20260101",
+        end_datetime=None,
+        kernel_types=None,
+        list_files=False,
+        require_coverage=False,
+    )
+
+
+@pytest.mark.parametrize(
+    "window_args",
+    [
+        ["--start-time", "0"],
+        ["--start-time", "0", "--start-datetime", "20260101", "--end-time", "1"],
+    ],
+)
+def test_cli_metakernel_window_end_required_once(window_args):
+    """Test that each window end must be given exactly one way."""
+    with patch.object(sys, "argv", ["ema-data-access", "metakernel", *window_args]):
+        with pytest.raises(SystemExit):
+            main()
