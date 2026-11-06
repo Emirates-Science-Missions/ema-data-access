@@ -208,9 +208,8 @@ class HousekeepingFilePath(EmaFilePath):
         """See base class."""
         return (
             ema_data_access.config["DATA_DIR"]
-            / f"{self.source}/housekeeping/{self.payload}/{self.timetag:%Y/%m}/{
-                self.filename
-            }"
+            / f"{self.source}/housekeeping/{self.payload}/{self.timetag:%Y/%m}"
+            / self.filename
         )
 
 
@@ -310,9 +309,8 @@ class ScienceFilePath(EmaFilePath):
 
     def construct_path(self) -> Path:
         """See base class."""
-        key = f"science/{self.payload}/{self.data_level}/{self.timetag:%Y/%m}/{
-            self.filename
-        }"
+        month = f"{self.timetag:%Y/%m}"
+        key = f"science/{self.payload}/{self.data_level}/{month}/{self.filename}"
         # Only L0 science files carry a source.
         if self.source:
             key = f"{self.source}/{key}"

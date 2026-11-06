@@ -434,22 +434,37 @@ def query_spice(  # noqa: PLR0913
     )
 
 
-def metakernel(
+def metakernel(  # noqa: PLR0913
     *,
-    start_time: float,
-    end_time: float,
+    start_time: float | None = None,
+    end_time: float | None = None,
+    start_datetime: str | None = None,
+    end_datetime: str | None = None,
     kernel_types: str | None = None,
     list_files: bool = False,
     require_coverage: bool = False,
 ) -> list[str] | str:
-    """Build a SPICE metakernel covering [start_time, end_time].
+    """Build a SPICE metakernel covering [start, end].
+
+    Give each end of the window in seconds past J2000
+    (`start_time`/`end_time`) or as a UTC date/time
+    (`start_datetime`/`end_datetime`); if both, the date/time wins. The
+    two ends may use different forms. Datetimes are converted to seconds
+    past J2000 server-side, with the same leapseconds kernel used to index
+    the SPICE files.
 
     Parameters
     ----------
-    start_time : float
-        Start of the coverage window, in seconds past J2000.
-    end_time : float
-        End of the coverage window, in seconds past J2000.
+    start_time : float, optional
+        Start of the coverage window, in seconds past J2000 (TDB).
+    end_time : float, optional
+        End of the coverage window, in seconds past J2000 (TDB).
+    start_datetime : str, optional
+        Start of the coverage window in UTC, in YYYYMMDD, YYYY-MM-DD,
+        YYYYMMDDHHMM, or YYYY-MM-DDTHH:MM:SS format.
+    end_datetime : str, optional
+        End of the coverage window in UTC, in the same formats as
+        `start_datetime`.
     kernel_types : str, optional
         Comma-separated `kernel_type` names (e.g.
         "ephem_reconstructed,ephem_predicted") to restrict the metakernel
@@ -471,9 +486,19 @@ def metakernel(
     ------
     EmaDataAccessError
         404 if `list_files` is true and no files matched; 422 if
-        `require_coverage` is true and the window isn't fully covered.
+        `require_coverage` is true and the window isn't fully covered, or
+        if a window end isn't given at all; 503 if a datetime
+        was given but the server has no leapseconds kernel to convert it.
     """
-    params = {"start_time": start_time, "end_time": end_time}
+    params = {}
+    if start_time is not None:
+        params["start_time"] = start_time
+    if end_time is not None:
+        params["end_time"] = end_time
+    if start_datetime is not None:
+        params["start_datetime"] = _normalize_date_param(start_datetime)
+    if end_datetime is not None:
+        params["end_datetime"] = _normalize_date_param(end_datetime)
     if kernel_types is not None:
         params["kernel_types"] = kernel_types
     if list_files:
