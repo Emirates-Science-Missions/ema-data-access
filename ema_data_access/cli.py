@@ -17,6 +17,7 @@ Use
     ema-data-access query-manifest --payload embirs
     ema-data-access query-spice --file-root naif
     ema-data-access metakernel --start-time 0 --end-time 100000 --list-files
+    ema-data-access metakernel --start-datetime 20260101 --end-datetime 20260201
     ema-data-access upload path/to/ema_l1_anc_sc_1234_20240101.csv
     ema-data-access upload path/to/dir
     ema-data-access download ema_l1_anc_sc_1234_20240101.csv
@@ -434,6 +435,8 @@ def _metakernel_parser(args: argparse.Namespace) -> None:
     result = ema_data_access.metakernel(
         start_time=args.start_time,
         end_time=args.end_time,
+        start_datetime=args.start_datetime,
+        end_datetime=args.end_datetime,
         kernel_types=args.kernel_types,
         list_files=args.list_files,
         require_coverage=args.require_coverage,
@@ -452,17 +455,29 @@ def add_metakernel_args(subparser: ArgumentParser) -> None:
     subparser : argparse.ArgumentParser
         A subparser to add the metakernel arguments to.
     """
-    subparser.add_argument(
+    start = subparser.add_mutually_exclusive_group(required=True)
+    start.add_argument(
         "--start-time",
         type=float,
-        required=True,
         help="Start of the coverage window, in seconds past J2000.",
     )
-    subparser.add_argument(
+    start.add_argument(
+        "--start-datetime",
+        type=str,
+        help="Start of the coverage window in UTC, in YYYYMMDD, YYYY-MM-DD, "
+        "YYYYMMDDHHMM, or YYYY-MM-DDTHH:MM:SS format.",
+    )
+    end = subparser.add_mutually_exclusive_group(required=True)
+    end.add_argument(
         "--end-time",
         type=float,
-        required=True,
         help="End of the coverage window, in seconds past J2000.",
+    )
+    end.add_argument(
+        "--end-datetime",
+        type=str,
+        help="End of the coverage window in UTC, in the same formats as "
+        "--start-datetime.",
     )
     subparser.add_argument(
         "--kernel-types",
