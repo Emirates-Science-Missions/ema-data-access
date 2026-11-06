@@ -224,12 +224,13 @@ def test_query_housekeeping_bad_params(mock_send_request):
     [
         # All parameters should send full query
         {
-            "file_name": "ema_rpt_l1a_20240101t000000_flux_p_v01-00.cdf",
-            "payload": "rept",
+            "file_name": "ema_reptile-3_l1a_20240101t000000_flux_orbit000_p_v01-00.cdf",
+            "payload": "reptile-3",
             "data_level": "l1a",
             "timetag_start": "2024-01-01",
             "timetag_end": "2024-01-02",
             "descriptor": "flux",
+            "orbit_number": 0,
             "pred_rec": "p",
             "file_extension": "cdf",
             "major_version": 1,

@@ -90,6 +90,7 @@ def test_cli_query_science(capsys):
         timetag_start=None,
         timetag_end=None,
         descriptor=None,
+        orbit_number=None,
         pred_rec=None,
         file_extension=None,
         major_version=None,
