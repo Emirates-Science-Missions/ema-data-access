@@ -2,6 +2,8 @@
 
 Lightweight Python tools to query and access EMA data.
 
+Using IDL instead of Python? See the [IDL guide](https://github.com/Emirates-Science-Missions/ema-data-access/blob/main/IDL.md).
+
 ## Setup
 
 ### Python environment (Poetry)
@@ -50,8 +52,10 @@ Lightweight Python tools to query and access EMA data.
 Every file in the EMA archive must match one of the naming conventions
 below.
 
-`<payload>` is one of `rept`, `mista`, `embirs`, `emacs`, `prb`, `cnc`, `pnc`,
-`irc`, `mac`, `gnc`. `<source>` is one of `flight`, `softsim`, `flatsat`. `<data_level>` is
+`<payload>` depends on the convention: L0 science and housekeeping names use
+`mista`, `embirs`, `emacs`, `rept`, `gnc`, `prb`, `mac`; upper-level (L1a+) science,
+calibration, and manifest names use `mista`, `embirs`, `emacs`, `pnac`, `cnac`, `irc`,
+`reptile-3`, `mac`, `prb` (manifests also allow `moc`). `<source>` is one of `flight`, `softsim`, `flatsat`. `<data_level>` is
 one of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
 
 | Table | Convention |
@@ -60,7 +64,8 @@ one of `l0`, `l1`, `l1a`, `l1b`, `l2`, `l2a`, `l2b`, `l3`, `ql`.
 | `manifest` | `<payload>_manifest_<YYYYMMDDHHMM>.txt`, or `moc_manifest_<YYYYMMDDHHMM>.txt` for a payload-less MOC manifest |
 | `housekeeping` | `ema_l0_hsk_<payload>_<source>_<YYYYMMDD>.pkts` |
 | `science` (L0) | `ema_l0_sci_<payload>_<source>_<YYYYMMDD>.pkts` |
-| `science` (L1a+) | `ema_<payload>_<data_level>_<YYYYMMDDtHHMMSS>_<descriptor>_<pred_rec>_v<NN>-<NN>.fits`, where `<pred_rec>` is `p` (predicted) or `r` (reconstructed) and `v<NN>-<NN>` is the two-digit major and minor version, both required (e.g. `ema_embirs_l1a_20240101t000000_observing-mode-info_p_v01-00.fits`) |
+| `science` (L1a+) | `ema_<payload>_<data_level>_<start>_[<target>-<mode>-]<descriptor>_orbit<NNN>_<pred_rec>_v<NN>-<NN>.<ext>`, where `<start>` is `YYYYMMDD` or `YYYYMMDDtHHMMSS`, the descriptor is required, `<target>-<mode>-` is optional (but both or neither): `<target>` is `a1`–`a6`, `a7iso`, `a7pso`, or `c<N>` (cruise) and `<mode>` is one of `sci`, `icu`, `sky`, `flt`, `drk`, `cal`, `orbit<NNN>` is the three-digit orbit number (`orbit000` until Justitia), `<pred_rec>` is `p` (predicted), `r` (reconstructed), or `na` (no ephemeris used), `v<NN>-<NN>` is the two-digit major and minor version, both required, and `<ext>` is one of `fits`, `png`, `cdf`, `ascii`, `csv` (e.g. `ema_embirs_l1a_20321207t122030_mode-descriptor_orbit000_p_v02-01.fits`, `ema_mista_l1a_20321207t122030_a1-sci-spectra_orbit003_r_v01-00.fits`) |
+| `calibration` | `ema_cal_<payload>_<descriptor>_<start>_v<NN>-<NN>.<ext>`, for scientist-supplied calibration and reference files, where the descriptor is required, `<start>` is `YYYYMMDD` or `YYYYMMDDtHHMMSS` (the date the file applies from), `v<NN>-<NN>` is the two-digit major and minor version, both required, and `<ext>` is one of `csv`, `fits`, `cdf`, `txt`, `ascii`, `json` (e.g. `ema_cal_mista_dark-frame_20240101_v01-00.fits`) |
 | `mission_events` | `ema_mission_events_<start_date:YYYYMMDD>_<end_date:YYYYMMDD>.xml` |
 
 ### SPICE kernel naming conventions

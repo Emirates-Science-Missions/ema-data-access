@@ -121,18 +121,7 @@ def add_query_housekeeping_args(subparser: ArgumentParser) -> None:
     subparser.add_argument(
         "--payload",
         type=str,
-        choices=[
-            "rept",
-            "mista",
-            "embirs",
-            "emacs",
-            "prb",
-            "cnc",
-            "pnc",
-            "irc",
-            "mac",
-            "gnc",
-        ],
+        choices=["mista", "embirs", "emacs", "rept", "gnc", "prb", "mac"],
         help="Payload to match.",
     )
     subparser.add_argument(
@@ -166,7 +155,10 @@ def _query_science_parser(args: argparse.Namespace) -> None:
         data_level=args.data_level,
         timetag_start=args.timetag_start,
         timetag_end=args.timetag_end,
+        target=args.target,
+        mode=args.mode,
         descriptor=args.descriptor,
+        orbit_number=args.orbit_number,
         pred_rec=args.pred_rec,
         file_extension=args.file_extension,
         major_version=args.major_version,
@@ -189,16 +181,17 @@ def add_query_science_args(subparser: ArgumentParser) -> None:
         "--payload",
         type=str,
         choices=[
-            "rept",
             "mista",
             "embirs",
             "emacs",
-            "prb",
-            "cnc",
-            "pnc",
-            "irc",
-            "mac",
+            "rept",
             "gnc",
+            "prb",
+            "pnac",
+            "cnac",
+            "irc",
+            "reptile-3",
+            "mac",
         ],
         help="Payload to match.",
     )
@@ -220,17 +213,29 @@ def add_query_science_args(subparser: ArgumentParser) -> None:
         help="Only include files with timetag on or before this, in YYYYMMDD "
         "or YYYY-MM-DD format.",
     )
+    subparser.add_argument(
+        "--target",
+        type=str,
+        help="Target to match (L1a+ only), e.g. 'a1', 'a7iso', 'c2'.",
+    )
+    subparser.add_argument(
+        "--mode",
+        type=str,
+        choices=["sci", "icu", "sky", "flt", "drk", "cal"],
+        help="Data product mode to match (L1a+ only).",
+    )
     subparser.add_argument("--descriptor", type=str, help="Descriptor to match.")
+    subparser.add_argument("--orbit-number", type=int, help="Orbit number to match.")
     subparser.add_argument(
         "--pred-rec",
         type=str,
-        choices=["p", "r"],
-        help="Predicted/reconstructed flag to match.",
+        choices=["p", "r", "na"],
+        help="Predicted/reconstructed flag to match ('na': no ephemeris used).",
     )
     subparser.add_argument(
         "--file-extension",
         type=str,
-        choices=["csv", "fits", "cdf", "pkts"],
+        choices=["csv", "fits", "cdf", "pkts", "png", "ascii"],
         help="File extension to match.",
     )
     subparser.add_argument("--major-version", type=int, help="Major version to match.")
@@ -316,16 +321,15 @@ def add_query_manifest_args(subparser: ArgumentParser) -> None:
         "--payload",
         type=str,
         choices=[
-            "rept",
             "mista",
             "embirs",
             "emacs",
-            "prb",
-            "cnc",
-            "pnc",
+            "pnac",
+            "cnac",
             "irc",
+            "reptile-3",
             "mac",
-            "gnc",
+            "prb",
             "moc",
         ],
         help="Payload to match. 'moc' matches payload-less MOC manifests.",

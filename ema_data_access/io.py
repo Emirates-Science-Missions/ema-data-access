@@ -183,8 +183,8 @@ def query_housekeeping(  # noqa: PLR0913
     file_name : str, optional
         Exact file name to match.
     payload : str, optional
-        Payload to match, one of "rept", "mista", "embirs",
-        "emacs", "prb", "cnc", "pnc", "irc", "mac", "gnc".
+        Payload to match, one of the L0 codes "mista", "embirs", "emacs",
+        "rept", "gnc", "prb", "mac".
     timetag_start : str, optional
         Only include files with timetag on or after this, in YYYYMMDD or
         YYYY-MM-DD format.
@@ -221,7 +221,10 @@ def query_science(  # noqa: PLR0913
     data_level: str | None = None,
     timetag_start: str | None = None,
     timetag_end: str | None = None,
+    target: str | None = None,
+    mode: str | None = None,
     descriptor: str | None = None,
+    orbit_number: int | None = None,
     pred_rec: str | None = None,
     file_extension: str | None = None,
     major_version: int | None = None,
@@ -235,8 +238,9 @@ def query_science(  # noqa: PLR0913
     file_name : str, optional
         Exact file name to match.
     payload : str, optional
-        Payload to match, one of "rept", "mista", "embirs",
-        "emacs", "prb", "cnc", "pnc", "irc", "mac", "gnc".
+        Payload to match. L0 files use "mista", "embirs", "emacs", "rept",
+        "gnc", "prb", "mac"; upper-level files use "mista", "embirs", "emacs",
+        "pnac", "cnac", "irc", "reptile-3", "mac", "prb".
     data_level : str, optional
         Data level to match, one of "l0", "l1", "l1a", "l1b", "l2", "l2a",
         "l2b", "l3", "ql".
@@ -246,12 +250,21 @@ def query_science(  # noqa: PLR0913
     timetag_end : str, optional
         Only include files with timetag on or before this, in YYYYMMDD or
         YYYY-MM-DD format.
+    target : str, optional
+        Target to match (L1a+ files only), e.g. "a1", "a7iso", "c2".
+    mode : str, optional
+        Data product mode to match (L1a+ files only), one of "sci", "icu",
+        "sky", "flt", "drk", "cal".
     descriptor : str, optional
         Descriptor to match.
+    orbit_number : int, optional
+        Orbit number to match (L1a+ files only).
     pred_rec : str, optional
-        Predicted/reconstructed flag to match, "p" or "r".
+        Predicted/reconstructed flag to match, "p", "r", or "na" (no
+        ephemeris used).
     file_extension : str, optional
-        File extension to match, one of "csv", "fits", "cdf", "pkts".
+        File extension to match, one of "csv", "fits", "cdf", "pkts", "png",
+        "ascii".
     major_version : int, optional
         Major version to match.
     minor_version : int, optional
@@ -272,7 +285,10 @@ def query_science(  # noqa: PLR0913
             "data_level": data_level,
             "timetag_start": _normalize_date_param(timetag_start),
             "timetag_end": _normalize_date_param(timetag_end),
+            "target": target,
+            "mode": mode,
             "descriptor": descriptor,
+            "orbit_number": orbit_number,
             "pred_rec": pred_rec,
             "file_extension": file_extension,
             "major_version": major_version,
@@ -341,8 +357,8 @@ def query_manifest(
     file_name : str, optional
         Exact file name to match.
     payload : str, optional
-        Payload to match, one of "rept", "mista", "embirs",
-        "emacs", "prb", "cnc", "pnc", "irc", "mac", "gnc", "moc".
+        Payload to match, one of "mista", "embirs", "emacs", "pnac",
+        "cnac", "irc", "reptile-3", "mac", "prb", "moc".
     timetag_start : str, optional
         Only include files with timetag on or after this, in YYYYMMDDHHMM
         or YYYY-MM-DDTHH:MM:SS format.
