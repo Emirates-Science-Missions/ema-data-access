@@ -594,6 +594,30 @@ def test_metakernel_text(mock_send_request):
     assert called_params == {"start_time": ["0"], "end_time": ["100000"]}
 
 
+def test_metakernel_datetimes(mock_send_request):
+    """Test that datetime window ends are normalized and sent in place of J2000.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    """
+    mock_response = MagicMock()
+    mock_response.text = ""
+    mock_send_request.return_value = mock_response
+
+    ema_data_access.metakernel(
+        start_datetime="20260101", end_datetime="2026-02-01T12:00:00"
+    )
+
+    sent_request = mock_send_request.call_args[0][0]
+    called_params = parse_qs(urlparse(sent_request.url).query)
+    assert called_params == {
+        "start_datetime": ["2026-01-01"],
+        "end_datetime": ["2026-02-01T12:00:00"],
+    }
+
+
 def test_metakernel_list_files(mock_send_request):
     """Test that list_files=True returns JSON and is included as a query param.
 

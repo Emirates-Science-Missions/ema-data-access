@@ -213,10 +213,16 @@ $ curl "<url>/query_spice?file_root=naif"
 
 ### Build a SPICE metakernel
 
-Build a metakernel covering a time window, given in seconds past J2000.
+Build a metakernel covering a time window. Give each end of the window
+either in seconds past J2000 (`--start-time`/`--end-time`) or as a UTC
+date/time (`--start-datetime`/`--end-datetime`, in YYYYMMDD, YYYY-MM-DD,
+YYYYMMDDHHMM, or YYYY-MM-DDTHH:MM:SS format). Datetimes are converted to
+seconds past J2000 server-side, using the same leapseconds kernel the PDC
+indexes SPICE files with.
 
 ```bash
 $ ema-data-access --url <url> metakernel --start-time 0 --end-time 100000 > mission.tm
+$ ema-data-access --url <url> metakernel --start-datetime 2026-01-01 --end-datetime 2026-02-01 > mission.tm
 ```
 
 Other available options: `--kernel-types` (comma-separated `kernel_type`
@@ -229,6 +235,7 @@ Under the hood, this is equivalent to:
 
 ```bash
 $ curl "<url>/metakernel?start_time=0&end_time=100000" -o mission.tm
+$ curl "<url>/metakernel?start_datetime=2026-01-01&end_datetime=2026-02-01" -o mission.tm
 ```
 
 ### Download the kernels and furnish the metakernel
