@@ -18,6 +18,11 @@ _MANIFEST_PAYLOADS = f"moc|{_L1_PAYLOADS}"
 _DATA_LEVELS = "l1|l1a|l1b|l2|l2a|l2b|l3|ql"
 # Origin of an L0 housekeeping / science file.
 _SOURCES = "flight|softsim|flatsat"
+# Optional L1a+ target-mode prefix on the descriptor (PTF-PDC ICD). Targets are
+# the asteroid codes A1-A6, A7 ISO/PSO, and cruise phases C<N>, written as one
+# lowercase word.
+_TARGETS = r"a[1-6]|a7iso|a7pso|c\d+"
+_MODES = "sci|icu|sky|flt|drk|cal"
 
 
 class InvalidEmaFileError(Exception):
@@ -223,17 +228,22 @@ class ScienceFilePath(EmaFilePath):
     """Covers two conventions that both land in the `science` table.
 
     L0:   ema_l0_sci_<payload>_<source>_YYYYMMDD.pkts
-    L1a+: ema_<payload>_<data_level>_<start>[_<descriptor>]_orbit<NNN>_
-          <pred_rec>_v<NN>-<NN>.<fits|png|cdf|ascii|csv>
+    L1a+: ema_<payload>_<data_level>_<start>_[<target>-<mode>-]<descriptor>_
+          orbit<NNN>_<pred_rec>_v<NN>-<NN>.<fits|png|cdf|ascii|csv>
 
     For L1a+, <start> is YYYYMMDD or YYYYMMDDtHHMMSS, the descriptor is
-    optional, and <pred_rec> is "p", "r", or "na" (no ephemeris used).
+    required, and <pred_rec> is "p", "r", or "na" (no ephemeris used).
+    <target> and <mode> are optional but appear together: <target> is one
+    of a1-a6, a7iso, a7pso, or c<N> (cruise), and <mode> is one of sci, icu,
+    sky, flt, drk, cal.
     """
 
     payload: str
     source: str | None
     data_level: str
     timetag: datetime
+    target: str | None
+    mode: str | None
     descriptor: str | None
     orbit_number: int | None
     pred_rec: str | None
@@ -248,7 +258,12 @@ class ScienceFilePath(EmaFilePath):
     )
     _L1_PATTERN: ClassVar[re.Pattern] = re.compile(
         rf"ema_(?P<payload>{_L1_PAYLOADS})_(?P<data_level>{_DATA_LEVELS})_"
-        r"(?P<timetag>\d{8}(?:t\d{6})?)_(?:(?P<descriptor>[a-z0-9\-]+)_)?"
+        r"(?P<timetag>\d{8}(?:t\d{6})?)_"
+        rf"(?:(?P<target>{_TARGETS})-(?P<mode>{_MODES})-)?"
+        # A bare target-mode with no descriptor after it is malformed, not a
+        # descriptor.
+        rf"(?!(?:{_TARGETS})-(?:{_MODES})_)"
+        r"(?P<descriptor>[a-z0-9\-]+)_"
         r"orbit(?P<orbit_number>\d{3})_"
         r"(?P<pred_rec>p|r|na)_v(?P<version>\d{2})-(?P<subversion>\d{2})"
         r"\.(?P<file_extension>fits|png|cdf|ascii|csv)"
@@ -276,6 +291,8 @@ class ScienceFilePath(EmaFilePath):
                     source=match["source"],
                     data_level="l0",
                     timetag=_parse_ymd(match["timetag"]),
+                    target=None,
+                    mode=None,
                     descriptor=None,
                     orbit_number=None,
                     pred_rec=None,
@@ -295,6 +312,8 @@ class ScienceFilePath(EmaFilePath):
                         if "t" in match["timetag"]
                         else _parse_ymd(match["timetag"])
                     ),
+                    target=match["target"],
+                    mode=match["mode"],
                     descriptor=match["descriptor"],
                     orbit_number=int(match["orbit_number"]),
                     pred_rec=match["pred_rec"],
@@ -316,6 +335,8 @@ class ScienceFilePath(EmaFilePath):
             "source": self.source,
             "data_level": self.data_level,
             "timetag": self.timetag,
+            "target": self.target,
+            "mode": self.mode,
             "descriptor": self.descriptor,
             "orbit_number": self.orbit_number,
             "pred_rec": self.pred_rec,

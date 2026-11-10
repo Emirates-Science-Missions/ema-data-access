@@ -197,6 +197,8 @@ def test_science_file_path_l1a():
     assert parsed.source is None
     assert parsed.data_level == "l1a"
     assert parsed.timetag == datetime(2032, 12, 7, 12, 20, 30, tzinfo=UTC)
+    assert parsed.target is None
+    assert parsed.mode is None
     assert parsed.descriptor == "observing-mode-info"
     assert parsed.orbit_number == 0
     assert parsed.pred_rec == "p"
@@ -209,6 +211,8 @@ def test_science_file_path_l1a():
         "source": None,
         "data_level": "l1a",
         "timetag": datetime(2032, 12, 7, 12, 20, 30, tzinfo=UTC),
+        "target": None,
+        "mode": None,
         "descriptor": "observing-mode-info",
         "orbit_number": 0,
         "pred_rec": "p",
@@ -373,13 +377,15 @@ def test_l1_and_manifest_reject_non_l1_payloads(payload: str):
 
 
 def test_science_file_path_l1a_optional_fields():
-    """Test an L1a+ name with a date-only start, no descriptor, and "na"."""
+    """Test an L1a+ name with a date-only start, no target/mode, and "na"."""
     parsed = ScienceFilePath.from_filename(
-        "ema_reptile-3_l2_20321207_orbit012_na_v01-00.cdf"
+        "ema_reptile-3_l2_20321207_flux_orbit012_na_v01-00.cdf"
     )
 
     assert parsed.timetag == datetime(2032, 12, 7, tzinfo=UTC)
-    assert parsed.descriptor is None
+    assert parsed.target is None
+    assert parsed.mode is None
+    assert parsed.descriptor == "flux"
     assert parsed.orbit_number == 12
     assert parsed.pred_rec == "na"
     assert parsed.file_extension == "cdf"
@@ -395,27 +401,99 @@ def test_science_file_path_l1a_extensions(ext: str):
         File extension under test.
     """
     parsed = ScienceFilePath.from_filename(
-        f"ema_embirs_l1a_20321207t122030_orbit000_p_v01-00.{ext}"
+        f"ema_embirs_l1a_20321207t122030_flux_orbit000_p_v01-00.{ext}"
     )
 
     assert parsed.file_extension == ext
 
 
 @pytest.mark.parametrize(
+    ("token", "target", "mode", "descriptor"),
+    [
+        ("a1-sci-spectra", "a1", "sci", "spectra"),
+        ("a6-icu-cal-lamp", "a6", "icu", "cal-lamp"),
+        ("a7iso-sky-img", "a7iso", "sky", "img"),
+        ("a7pso-flt-img", "a7pso", "flt", "img"),
+        ("c0-drk-img", "c0", "drk", "img"),
+        ("c12-cal-frame", "c12", "cal", "frame"),
+    ],
+)
+def test_science_file_path_l1a_target_mode(
+    token: str, target: str, mode: str, descriptor: str
+):
+    """Test that a target-mode prefix is split off the descriptor.
+
+    Parameters
+    ----------
+    token : str
+        The full `<target>-<mode>-<descriptor>` filename field.
+    target : str
+        Expected parsed target.
+    mode : str
+        Expected parsed mode.
+    descriptor : str
+        Expected parsed descriptor.
+    """
+    filename = f"ema_mista_l1a_20321207t122030_{token}_orbit003_r_v01-00.fits"
+    parsed = ScienceFilePath.from_filename(filename)
+
+    assert parsed.target == target
+    assert parsed.mode == mode
+    assert parsed.descriptor == descriptor
+    assert parsed.to_metadata()["target"] == target
+    assert parsed.to_metadata()["mode"] == mode
+    assert parsed.construct_path() == ema_data_access.config["DATA_DIR"] / (
+        f"science/mista/l1a/2032/12/{filename}"
+    )
+
+
+@pytest.mark.parametrize(
+    "token",
+    [
+        # unknown target code is not split off, so it all stays descriptor
+        "a8-sci-spectra",
+        # unknown mode is not split off either
+        "a1-obs-spectra",
+    ],
+)
+def test_science_file_path_l1a_unrecognized_target_mode(token: str):
+    """Test that a prefix that isn't a known target-mode stays in the descriptor.
+
+    Parameters
+    ----------
+    token : str
+        Descriptor field whose prefix isn't a known target and mode.
+    """
+    parsed = ScienceFilePath.from_filename(
+        f"ema_mista_l1a_20321207t122030_{token}_orbit003_r_v01-00.fits"
+    )
+
+    assert parsed.target is None
+    assert parsed.mode is None
+    assert parsed.descriptor == token
+
+
+@pytest.mark.parametrize(
     "filename",
     [
+        # missing descriptor
+        "ema_embirs_l1a_20321207t122030_orbit000_p_v01-00.fits",
+        # target-mode with no descriptor
+        "ema_mista_l1a_20321207t122030_a1-sci_orbit000_p_v01-00.fits",
+        # uppercase target
+        "ema_mista_l1a_20321207t122030_A1-sci-spectra_orbit000_p_v01-00.fits",
         # missing orbit field
         "ema_embirs_l1a_20321207t122030_mode-descriptor_p_v01-00.fits",
         # orbit must be exactly three digits
-        "ema_embirs_l1a_20321207t122030_orbit01_p_v01-00.fits",
-        "ema_embirs_l1a_20321207t122030_orbit0001_p_v01-00.fits",
+        "ema_embirs_l1a_20321207t122030_flux_orbit01_p_v01-00.fits",
+        "ema_embirs_l1a_20321207t122030_flux_orbit0001_p_v01-00.fits",
         # start time truncated to the hour or minute
-        "ema_embirs_l1a_20321207t12_orbit000_p_v01-00.fits",
-        "ema_embirs_l1a_20321207t1220_orbit000_p_v01-00.fits",
+        "ema_embirs_l1a_20321207t12_flux_orbit000_p_v01-00.fits",
+        "ema_embirs_l1a_20321207t1220_flux_orbit000_p_v01-00.fits",
         # unknown predict/reconstruct flag
-        "ema_embirs_l1a_20321207t122030_orbit000_x_v01-00.fits",
+        "ema_embirs_l1a_20321207t122030_flux_orbit000_x_v01-00.fits",
         # pkts is L0 only
-        "ema_embirs_l1a_20321207t122030_orbit000_p_v01-00.pkts",
+        "ema_embirs_l1a_20321207t122030_flux_orbit000_p_v01-00.pkts",
     ],
 )
 def test_science_file_path_l1a_invalid(filename: str):

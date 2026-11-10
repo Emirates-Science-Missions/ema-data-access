@@ -155,6 +155,8 @@ def _query_science_parser(args: argparse.Namespace) -> None:
         data_level=args.data_level,
         timetag_start=args.timetag_start,
         timetag_end=args.timetag_end,
+        target=args.target,
+        mode=args.mode,
         descriptor=args.descriptor,
         orbit_number=args.orbit_number,
         pred_rec=args.pred_rec,
@@ -210,6 +212,17 @@ def add_query_science_args(subparser: ArgumentParser) -> None:
         type=str,
         help="Only include files with timetag on or before this, in YYYYMMDD "
         "or YYYY-MM-DD format.",
+    )
+    subparser.add_argument(
+        "--target",
+        type=str,
+        help="Target to match (L1a+ only), e.g. 'a1', 'a7iso', 'c2'.",
+    )
+    subparser.add_argument(
+        "--mode",
+        type=str,
+        choices=["sci", "icu", "sky", "flt", "drk", "cal"],
+        help="Data product mode to match (L1a+ only).",
     )
     subparser.add_argument("--descriptor", type=str, help="Descriptor to match.")
     subparser.add_argument("--orbit-number", type=int, help="Orbit number to match.")

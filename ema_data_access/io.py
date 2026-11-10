@@ -221,6 +221,8 @@ def query_science(  # noqa: PLR0913
     data_level: str | None = None,
     timetag_start: str | None = None,
     timetag_end: str | None = None,
+    target: str | None = None,
+    mode: str | None = None,
     descriptor: str | None = None,
     orbit_number: int | None = None,
     pred_rec: str | None = None,
@@ -248,6 +250,11 @@ def query_science(  # noqa: PLR0913
     timetag_end : str, optional
         Only include files with timetag on or before this, in YYYYMMDD or
         YYYY-MM-DD format.
+    target : str, optional
+        Target to match (L1a+ files only), e.g. "a1", "a7iso", "c2".
+    mode : str, optional
+        Data product mode to match (L1a+ files only), one of "sci", "icu",
+        "sky", "flt", "drk", "cal".
     descriptor : str, optional
         Descriptor to match.
     orbit_number : int, optional
@@ -278,6 +285,8 @@ def query_science(  # noqa: PLR0913
             "data_level": data_level,
             "timetag_start": _normalize_date_param(timetag_start),
             "timetag_end": _normalize_date_param(timetag_end),
+            "target": target,
+            "mode": mode,
             "descriptor": descriptor,
             "orbit_number": orbit_number,
             "pred_rec": pred_rec,

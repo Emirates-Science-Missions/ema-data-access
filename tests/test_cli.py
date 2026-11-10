@@ -89,6 +89,8 @@ def test_cli_query_science(capsys):
         data_level="l1a",
         timetag_start=None,
         timetag_end=None,
+        target=None,
+        mode=None,
         descriptor=None,
         orbit_number=None,
         pred_rec=None,
