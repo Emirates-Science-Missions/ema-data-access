@@ -298,13 +298,17 @@ def query_science(  # noqa: PLR0913
     )
 
 
-def query_mission_events(
+def query_mission_events(  # noqa: PLR0913
     *,
     file_name: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
     version: int | None = None,
     md5checksum: str | None = None,
+    event_type: str | None = None,
+    event_source: str | None = None,
+    label: str | None = None,
+    details: str | None = None,
 ) -> list[dict]:
     """Query the mission_events table for files matching the given filters.
 
@@ -325,6 +329,14 @@ def query_mission_events(
         File version to match.
     md5checksum : str, optional
         MD5 checksum to match.
+    event_type : str, optional
+        Event type to match.
+    event_source : str, optional
+        Event source to match.
+    label : str, optional
+        Event label to match.
+    details : str, optional
+        Event details to match.
 
     Returns
     -------
@@ -339,6 +351,10 @@ def query_mission_events(
             "end_date": _normalize_date_param(end_date),
             "version": version,
             "md5checksum": md5checksum,
+            "event_type": event_type,
+            "event_source": event_source,
+            "label": label,
+            "details": details,
         },
     )
 

@@ -298,6 +298,10 @@ def test_query_science_bad_params(mock_send_request):
             "end_date": "2024-01-10",
             "version": 1,
             "md5checksum": "abc123",
+            "event_type": "maneuver",
+            "event_source": "moc",
+            "label": "tcm1",
+            "details": "burn",
         },
         # Make sure not all query params are sent if they are missing
         {"start_date": "2024-01-01"},

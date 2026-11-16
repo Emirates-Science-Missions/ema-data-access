@@ -259,6 +259,10 @@ def _query_mission_events_parser(args: argparse.Namespace) -> None:
         end_date=args.end_date,
         version=args.version,
         md5checksum=args.md5checksum,
+        event_type=args.event_type,
+        event_source=args.event_source,
+        label=args.label,
+        details=args.details,
     )
     print(json.dumps(results, indent=2))
 
@@ -289,6 +293,10 @@ def add_query_mission_events_args(subparser: ArgumentParser) -> None:
     )
     subparser.add_argument("--version", type=int, help="File version to match.")
     subparser.add_argument("--md5checksum", type=str, help="MD5 checksum to match.")
+    subparser.add_argument("--event-type", type=str, help="Event type to match.")
+    subparser.add_argument("--event-source", type=str, help="Event source to match.")
+    subparser.add_argument("--label", type=str, help="Event label to match.")
+    subparser.add_argument("--details", type=str, help="Event details to match.")
     subparser.set_defaults(func=_query_mission_events_parser)
 
 

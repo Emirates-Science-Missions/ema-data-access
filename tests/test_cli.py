@@ -129,6 +129,10 @@ def test_cli_query_mission_events(capsys):
         end_date="20240110",
         version=None,
         md5checksum=None,
+        event_type=None,
+        event_source=None,
+        label=None,
+        details=None,
     )
     assert "ema_mission_events_20240101_20240110.xml" in capsys.readouterr().out
 
