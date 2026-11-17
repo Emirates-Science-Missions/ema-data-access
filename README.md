@@ -160,7 +160,8 @@ window and any event whose own range overlaps that window is returned.
 $ EMA_API_KEY=<your-api-key> ema-data-access --url <url> query-mission-events --start-date 20240101 --end-date 20240110
 ```
 
-Other available filters: `--file-name`, `--version`, `--md5checksum`.
+Other available filters: `--file-name`, `--version`, `--md5checksum`,
+`--event-type`, `--event-source`, `--label`, `--details`.
 Results are returned as JSON.
 
 Under the hood, this is equivalent to:
