@@ -674,6 +674,165 @@ def test_metakernel_require_coverage_error(mock_send_request):
     assert called_params["require_coverage"] == ["True"]
 
 
+def _metakernel_download_response(file_names: list[str]) -> MagicMock:
+    """Build a mock ``/metakernel?download=true`` response.
+
+    Parameters
+    ----------
+    file_names : list of str
+        The kernels the metakernel lists.
+
+    Returns
+    -------
+    unittest.mock.MagicMock
+        A response whose JSON holds the metakernel text and a result per
+        kernel.
+    """
+    response = MagicMock()
+    response.json.return_value = {
+        "metakernel": "\\begindata\nKERNELS_TO_LOAD = ( )\n\\begintext\n",
+        "results": [{"filename": name} for name in file_names],
+    }
+    return response
+
+
+def _presign_response(results: list[dict]) -> MagicMock:
+    """Build a mock ``POST /download`` response.
+
+    Parameters
+    ----------
+    results : list of dict
+        The per-file ``results`` entries to return.
+
+    Returns
+    -------
+    unittest.mock.MagicMock
+        A response whose JSON holds `results`.
+    """
+    response = MagicMock()
+    response.json.return_value = {"results": results}
+    return response
+
+
+def test_metakernel_download_to(mock_send_request, tmp_path):
+    """Test download_to fetches each kernel and saves the metakernel beside them.
+
+    The absolute directory is sent as base_path, and the default name is
+    built from the window.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    kernel_dir = tmp_path / "kernels"
+    mock_send_request.side_effect = [
+        _metakernel_download_response(["naif0012.tls"]),
+        _presign_response(
+            [
+                {
+                    "filename": "naif0012.tls",
+                    "status_code": 200,
+                    "download_url": "https://s3.example.com/naif0012.tls",
+                }
+            ]
+        ),
+        MagicMock(content=b"tls"),
+    ]
+
+    tm_path = ema_data_access.metakernel(
+        start_datetime="20260101",
+        end_datetime="2026-02-01T12:00:00",
+        download_to=kernel_dir,
+    )
+
+    assert tm_path == kernel_dir.resolve() / "ema_20260101_20260201120000.tm"
+    assert "KERNELS_TO_LOAD" in tm_path.read_text()
+    assert (kernel_dir / "naif0012.tls").read_bytes() == b"tls"
+
+    sent_request = mock_send_request.call_args_list[0].args[0]
+    called_params = parse_qs(urlparse(sent_request.url).query)
+    assert called_params["download"] == ["True"]
+    assert called_params["base_path"] == [str(kernel_dir.resolve())]
+
+
+@pytest.mark.parametrize(
+    ("window", "tm_name", "expected_name"),
+    [
+        ({"start_time": 0, "end_time": 100000.5}, None, "ema_0_100000.tm"),
+        (
+            {"start_time": 0, "end_datetime": "20260201"},
+            None,
+            "ema_0_20260201.tm",
+        ),
+        ({"start_time": 0, "end_time": 100000}, "mission.tm", "mission.tm"),
+    ],
+    ids=["seconds", "mixed", "explicit-name"],
+)
+def test_metakernel_download_to_name(
+    mock_send_request, tmp_path, window: dict, tm_name: str | None, expected_name: str
+):
+    """Test the saved metakernel's name for each way of giving the window.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    window : dict
+        Window keyword arguments passed to `metakernel`.
+    tm_name : str or None
+        Explicit metakernel file name, if any.
+    expected_name : str
+        The file name the metakernel should be saved under.
+    """
+    mock_send_request.side_effect = [
+        _metakernel_download_response([]),
+        _presign_response([]),
+    ]
+
+    tm_path = ema_data_access.metakernel(
+        **window, download_to=tmp_path, tm_name=tm_name
+    )
+
+    assert tm_path.name == expected_name
+
+
+def test_metakernel_download_to_missing_kernel(mock_send_request, tmp_path):
+    """Test a kernel that can't be provided raises and no metakernel is saved.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for requests.Session
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    mock_send_request.side_effect = [
+        _metakernel_download_response(["naif0012.tls", "de440.bsp"]),
+        _presign_response(
+            [
+                {
+                    "filename": "naif0012.tls",
+                    "status_code": 200,
+                    "download_url": "https://s3.example.com/naif0012.tls",
+                },
+                {"filename": "de440.bsp", "status_code": 404, "detail": "Not found."},
+            ]
+        ),
+        MagicMock(content=b"tls"),
+    ]
+
+    with pytest.raises(EmaDataAccessError, match=r"de440\.bsp: Not found\."):
+        ema_data_access.metakernel(start_time=0, end_time=100000, download_to=tmp_path)
+
+    assert (tmp_path / "naif0012.tls").read_bytes() == b"tls"
+    assert not list(tmp_path.glob("*.tm"))
+
+
 @pytest.mark.parametrize("as_str", [False, True], ids=["path", "str"])
 @pytest.mark.parametrize(
     ("api_key", "expected_header"),

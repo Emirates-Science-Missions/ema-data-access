@@ -18,6 +18,7 @@ Use
     ema-data-access query-spice --file-root naif
     ema-data-access metakernel --start-time 0 --end-time 100000 --list-files
     ema-data-access metakernel --start-datetime 20260101 --end-datetime 20260201
+    ema-data-access metakernel --start-time 0 --end-time 100000 --download-to kernels
     ema-data-access upload path/to/ema_l1_anc_sc_1234_20240101.csv
     ema-data-access upload path/to/dir
     ema-data-access download ema_l1_anc_sc_1234_20240101.csv
@@ -444,9 +445,13 @@ def _metakernel_parser(args: argparse.Namespace) -> None:
         kernel_types=args.kernel_types,
         list_files=args.list_files,
         require_coverage=args.require_coverage,
+        download_to=args.download_to,
+        tm_name=args.tm_name,
     )
     if args.list_files:
         print(json.dumps(result, indent=2))
+    elif args.download_to is not None:
+        print(f"Saved metakernel and kernels to {result}")
     else:
         print(result)
 
@@ -492,6 +497,18 @@ def add_metakernel_args(subparser: ArgumentParser) -> None:
         "--list-files",
         action="store_true",
         help="Return the list of file names instead of metakernel text.",
+    )
+    subparser.add_argument(
+        "--download-to",
+        type=Path,
+        help="Download the kernels into this directory and save the "
+        "metakernel next to them, listing each kernel by its full path.",
+    )
+    subparser.add_argument(
+        "--tm-name",
+        type=str,
+        help="File name for the saved metakernel (with --download-to). "
+        "Defaults to ema_<start>_<end>.tm.",
     )
     subparser.add_argument(
         "--require-coverage",

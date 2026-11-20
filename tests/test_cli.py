@@ -231,6 +231,8 @@ def test_cli_metakernel(capsys):
         kernel_types=None,
         list_files=False,
         require_coverage=False,
+        download_to=None,
+        tm_name=None,
     )
     assert "KERNELS_TO_LOAD" in capsys.readouterr().out
 
@@ -267,8 +269,40 @@ def test_cli_metakernel_list_files(capsys):
         kernel_types="ephem_reconstructed,ephem_predicted",
         list_files=True,
         require_coverage=False,
+        download_to=None,
+        tm_name=None,
     )
     assert "ema_pred_v001.bsp" in capsys.readouterr().out
+
+
+def test_cli_metakernel_download_to(capsys):
+    """Test that '--download-to' and '--tm-name' are passed through."""
+    with patch.object(
+        sys,
+        "argv",
+        [
+            "ema-data-access",
+            "metakernel",
+            "--start-time",
+            "0",
+            "--end-time",
+            "100000",
+            "--download-to",
+            "kernels",
+            "--tm-name",
+            "mission.tm",
+        ],
+    ):
+        with patch.object(
+            ema_data_access,
+            "metakernel",
+            return_value=Path("kernels/mission.tm"),
+        ) as mock_metakernel:
+            main()
+
+    assert mock_metakernel.call_args.kwargs["download_to"] == Path("kernels")
+    assert mock_metakernel.call_args.kwargs["tm_name"] == "mission.tm"
+    assert "kernels/mission.tm" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("name", ["ema_l1_anc_sc_1234_20240101.csv", "dir"])
@@ -347,6 +381,8 @@ def test_cli_metakernel_datetimes():
         kernel_types=None,
         list_files=False,
         require_coverage=False,
+        download_to=None,
+        tm_name=None,
     )
 
 

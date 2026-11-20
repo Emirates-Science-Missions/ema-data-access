@@ -240,29 +240,45 @@ $ curl "<url>/metakernel?start_datetime=2026-01-01&end_datetime=2026-02-01" -o m
 
 ### Download the kernels and furnish the metakernel
 
-A metakernel only lists kernel file names — it doesn't bundle the kernels
-themselves. Download every file it references into the same directory as the
-metakernel, then furnish it with
-[SpiceyPy](https://github.com/AndrewAnnex/SpiceyPy). SPICE kernels are always
-released, so no API key is required.
+Use `--download-to` to download every kernel the metakernel lists into a
+directory and save the metakernel next to them. The metakernel lists each
+kernel by its full path, so it can be furnished from any working directory.
+It's named `ema_<start>_<end>.tm` after the window (e.g.
+`ema_20260101_20260201.tm`) unless you pass `--tm-name`. SPICE kernels are
+always released, so no API key is required.
+
+```bash
+$ ema-data-access --url <url> metakernel --start-datetime 2026-01-01 --end-datetime 2026-02-01 --download-to kernels
+```
+
+Or from Python, then furnish it with
+[SpiceyPy](https://github.com/AndrewAnnex/SpiceyPy):
 
 ```python
 import ema_data_access
 import spiceypy
 
-start_time, end_time = 0, 100000
-kernel_dir = "kernels"
-
-file_names = ema_data_access.metakernel(
-    start_time=start_time, end_time=end_time, list_files=True
+tm_path = ema_data_access.metakernel(
+    start_datetime="2026-01-01", end_datetime="2026-02-01", download_to="kernels"
 )
-ema_data_access.download(file_names, destination=kernel_dir)
-
-with open(f"{kernel_dir}/mission.tm", "w") as f:
-    f.write(ema_data_access.metakernel(start_time=start_time, end_time=end_time))
-
-spiceypy.furnsh(f"{kernel_dir}/mission.tm")
+spiceypy.furnsh(str(tm_path))
 ```
+
+If any kernel can't be downloaded, the rest are still saved but the
+metakernel isn't, and an error lists what's missing.
+
+Without `--download-to`, the metakernel lists bare file names, which SPICE
+looks for in the current working directory — not the metakernel's
+directory. Either furnish it from the directory holding the kernels, or
+pass `base_path` to the API with that directory so each entry is a full
+path:
+
+```bash
+$ curl "<url>/metakernel?start_datetime=2026-01-01&end_datetime=2026-02-01&base_path=/home/me/kernels" -o mission.tm
+```
+
+Entries longer than SPICE's 80-character limit are split across lines with
+SPICE's `+` continuation, so long paths are fine.
 
 ### Upload files
 
