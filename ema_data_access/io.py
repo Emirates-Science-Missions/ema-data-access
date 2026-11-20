@@ -22,12 +22,16 @@ _RETRY_ADAPTER = requests.adapters.HTTPAdapter(max_retries=3)
 
 
 @contextlib.contextmanager
-def _make_request(request: requests.PreparedRequest, authenticate: bool = True):
+def _make_request(
+    request: requests.PreparedRequest, authenticate: bool = True, stream: bool = False
+):
     """Get the response from a URL request using the requests library.
 
     This is a helper function to handle different types of errors that can
     occur when making HTTP requests and yield the response body. Pass
-    ``authenticate=False`` for presigned S3 URLs so the API key isn't sent.
+    ``authenticate=False`` for presigned S3 URLs so the API key isn't sent,
+    and ``stream=True`` to read the body in chunks with ``iter_content``
+    instead of all at once.
     """
     logger.debug("Making request: %s", request)
 
@@ -36,7 +40,7 @@ def _make_request(request: requests.PreparedRequest, authenticate: bool = True):
     try:
         with requests.Session() as session:
             session.mount("https://", _RETRY_ADAPTER)
-            response = session.send(request)
+            response = session.send(request, stream=stream)
             response.raise_for_status()
             yield response
     except requests.exceptions.HTTPError as e:
@@ -459,7 +463,9 @@ def metakernel(  # noqa: PLR0913
     kernel_types: str | None = None,
     list_files: bool = False,
     require_coverage: bool = False,
-) -> list[str] | str:
+    download_to: Path | str | None = None,
+    tm_name: str | None = None,
+) -> list[str] | str | Path:
     """Build a SPICE metakernel covering [start, end].
 
     Give each end of the window in seconds past J2000
@@ -468,6 +474,10 @@ def metakernel(  # noqa: PLR0913
     two ends may use different forms. Datetimes are converted to seconds
     past J2000 server-side, with the same leapseconds kernel used to index
     the SPICE files.
+
+    With `download_to`, the kernels are downloaded into that directory and
+    the metakernel is saved next to them, listing each kernel by its full
+    path so it can be furnished from any working directory.
 
     Parameters
     ----------
@@ -491,12 +501,20 @@ def metakernel(  # noqa: PLR0913
         If true, raise `EmaDataAccessError` (422) with the remaining gaps
         instead of returning a partial metakernel when the window isn't
         fully covered.
+    download_to : pathlib.Path or str, optional
+        Directory to download the kernels and save the metakernel in.
+        Created if it doesn't exist.
+    tm_name : str, optional
+        File name for the saved metakernel. Only used with `download_to`.
+        Defaults to ``ema_<start>_<end>.tm``, with each end as the digits
+        of its date/time (e.g. 20260101) or whole seconds past J2000.
 
     Returns
     -------
-    list or str
-        The ordered list of file names if `list_files` is true; otherwise
-        the metakernel file contents as plain text.
+    list, str, or pathlib.Path
+        The ordered list of file names if `list_files` is true; the path
+        to the saved metakernel if `download_to` is given; otherwise the
+        metakernel file contents as plain text.
 
     Raises
     ------
@@ -505,6 +523,8 @@ def metakernel(  # noqa: PLR0913
         `require_coverage` is true and the window isn't fully covered, or
         if a window end isn't given at all; 503 if a datetime
         was given but the server has no leapseconds kernel to convert it.
+        With `download_to`, also raised if any kernel can't be downloaded;
+        the metakernel isn't saved then.
     """
     params = {}
     if start_time is not None:
@@ -521,6 +541,10 @@ def metakernel(  # noqa: PLR0913
         params["list_files"] = list_files
     if require_coverage:
         params["require_coverage"] = require_coverage
+    if download_to is not None:
+        download_to = Path(download_to).expanduser().resolve()
+        params["download"] = True
+        params["base_path"] = str(download_to)
 
     url = f"{_get_base_url()}/metakernel"
     request = requests.Request(method="GET", url=url, params=params).prepare()
@@ -531,10 +555,47 @@ def metakernel(  # noqa: PLR0913
             items = response.json()
             logger.debug("Received JSON: %s", items)
             return items
-        return response.text
+        if download_to is None:
+            return response.text
+        body = response.json()
+
+    download_to.mkdir(parents=True, exist_ok=True)
+    _download_results(body["results"], download_to)
+
+    if tm_name is None:
+        start = _window_label(params.get("start_datetime"), start_time)
+        end = _window_label(params.get("end_datetime"), end_time)
+        tm_name = f"ema_{start}_{end}.tm"
+    tm_path = download_to / tm_name
+    tm_path.write_text(body["metakernel"])
+    return tm_path
 
 
-def download(file_names: list[str], destination: Path | str = ".") -> list[Path]:
+def _window_label(window_datetime: str | None, seconds: float | None) -> str:
+    """Format one end of a metakernel window for its default file name.
+
+    Parameters
+    ----------
+    window_datetime : str or None
+        The window end as a date/time, as sent to the API. Wins over
+        `seconds`, as it does server-side.
+    seconds : float or None
+        The window end in seconds past J2000.
+
+    Returns
+    -------
+    str
+        The digits of `window_datetime` (e.g. "20260101"), or whole
+        `seconds` if no date/time was given.
+    """
+    if window_datetime is not None:
+        return "".join(c for c in window_datetime if c.isdigit())
+    return str(int(seconds))
+
+
+def download(
+    file_names: list[str], destination: Path | str = ".", zip_name: str | None = None
+) -> list[Path]:
     """Download files from the EMA data archive.
 
     Parameters
@@ -543,6 +604,62 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
         Exact names of the files to download.
     destination : pathlib.Path or str, optional
         Directory to save the files in. Defaults to the current directory.
+    zip_name : str, optional
+        If given, download the files as one zip file with this name.
+
+    Returns
+    -------
+    list of pathlib.Path
+        Path to each downloaded file, or to the zip file.
+
+    Raises
+    ------
+    TypeError
+        If `file_names` is a single str rather than a list.
+    EmaDataAccessError
+        If more than 1000 files are requested, before anything is sent; or
+        if the API can't provide any files, raised after the rest are
+        downloaded.
+    """
+    if isinstance(file_names, str):
+        raise TypeError("file_names must be a list of file names, not a str")
+    if len(file_names) > 1000:
+        raise EmaDataAccessError("At most 1000 files can be downloaded per call.")
+
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+
+    url = f"{_get_base_url()}/download"
+    if zip_name is not None:
+        request = requests.Request(
+            method="POST",
+            url=url,
+            params={"archive": True},
+            json={"filenames": file_names},
+        ).prepare()
+        path = destination / zip_name
+        with _make_request(request) as response:
+            path.write_bytes(response.content)
+        return [path]
+
+    request = requests.Request(
+        method="POST", url=url, json={"filenames": file_names}
+    ).prepare()
+    with _make_request(request) as response:
+        results = response.json()["results"]
+
+    return _download_results(results, destination)
+
+
+def _download_results(results: list[dict], destination: Path) -> list[Path]:
+    """Download each file from its presigned URL.
+
+    Parameters
+    ----------
+    results : list of dict
+        Results from ``/download`` or ``/metakernel?download=true``.
+    destination : pathlib.Path
+        Directory to save the files in.
 
     Returns
     -------
@@ -551,25 +668,9 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
 
     Raises
     ------
-    TypeError
-        If `file_names` is a single str rather than a list.
     EmaDataAccessError
-        If the API can't provide any files, raised after the rest are
-        downloaded.
+        If any files couldn't be downloaded.
     """
-    if isinstance(file_names, str):
-        raise TypeError("file_names must be a list of file names, not a str")
-
-    destination = Path(destination)
-    destination.mkdir(parents=True, exist_ok=True)
-
-    url = f"{_get_base_url()}/download"
-    request = requests.Request(
-        method="POST", url=url, json={"filenames": file_names}
-    ).prepare()
-    with _make_request(request) as response:
-        results = response.json()["results"]
-
     paths = []
     missing = []
     for result in results:
@@ -581,9 +682,17 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
             method="GET", url=result["download_url"]
         ).prepare()
         logger.info("Downloading %s", result["filename"])
-        with _make_request(get_request, authenticate=False) as file_response:
+        with _make_request(
+            get_request, authenticate=False, stream=True
+        ) as file_response:
             path = destination / result["filename"]
-            path.write_bytes(file_response.content)
+            try:
+                with open(path, "wb") as f:
+                    for chunk in file_response.iter_content(chunk_size=1024 * 1024):
+                        f.write(chunk)
+            except requests.exceptions.RequestException:
+                path.unlink(missing_ok=True)
+                raise
         paths.append(path)
 
     if missing:
