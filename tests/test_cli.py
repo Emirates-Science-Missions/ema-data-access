@@ -349,7 +349,7 @@ def test_cli_download(capsys, extra_args: list, expected_destination: Path):
             main()
 
     mock_download.assert_called_once_with(
-        ["naif0012.tls"], destination=expected_destination
+        ["naif0012.tls"], destination=expected_destination, zip_name=None
     )
     assert "Downloaded" in capsys.readouterr().out
 

@@ -977,6 +977,37 @@ def test_download_failure_removes_partial_file(mock_send_request, tmp_path):
     assert not (tmp_path / "de440.bsp").exists()
 
 
+def test_download_zip(mock_send_request, tmp_path, monkeypatch):
+    """Test zip_name POSTs with archive=true and saves the zip file.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    monkeypatch : pytest.fixture
+        Fixture for monkeypatching module/global state.
+    """
+    monkeypatch.setitem(ema_data_access.config, "API_KEY", "test-api-key")
+    file_names = ["naif0012.tls", "de440.bsp"]
+    mock_send_request.return_value = MagicMock(content=b"PKzip")
+
+    result = ema_data_access.download(
+        file_names, destination=tmp_path, zip_name="kernels.zip"
+    )
+
+    assert result == [tmp_path / "kernels.zip"]
+    assert result[0].read_bytes() == b"PKzip"
+
+    mock_send_request.assert_called_once()
+    request = mock_send_request.call_args.args[0]
+    assert request.method == "POST"
+    assert request.url == "https://api.test.com/download?archive=True"
+    assert json.loads(request.body) == {"filenames": file_names}
+    assert request.headers["x-api-key"] == "test-api-key"
+
+
 def test_download_rejects_str(mock_send_request, tmp_path):
     """Test that a single file name passed as a str is rejected up front.
 

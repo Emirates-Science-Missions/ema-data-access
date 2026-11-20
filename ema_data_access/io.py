@@ -593,7 +593,9 @@ def _window_label(window_datetime: str | None, seconds: float | None) -> str:
     return str(int(seconds))
 
 
-def download(file_names: list[str], destination: Path | str = ".") -> list[Path]:
+def download(
+    file_names: list[str], destination: Path | str = ".", zip_name: str | None = None
+) -> list[Path]:
     """Download files from the EMA data archive.
 
     Parameters
@@ -602,11 +604,13 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
         Exact names of the files to download.
     destination : pathlib.Path or str, optional
         Directory to save the files in. Defaults to the current directory.
+    zip_name : str, optional
+        If given, download the files as one zip file with this name.
 
     Returns
     -------
     list of pathlib.Path
-        Path to each downloaded file.
+        Path to each downloaded file, or to the zip file.
 
     Raises
     ------
@@ -626,6 +630,18 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
     destination.mkdir(parents=True, exist_ok=True)
 
     url = f"{_get_base_url()}/download"
+    if zip_name is not None:
+        request = requests.Request(
+            method="POST",
+            url=url,
+            params={"archive": True},
+            json={"filenames": file_names},
+        ).prepare()
+        path = destination / zip_name
+        with _make_request(request) as response:
+            path.write_bytes(response.content)
+        return [path]
+
     request = requests.Request(
         method="POST", url=url, json={"filenames": file_names}
     ).prepare()

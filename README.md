@@ -350,6 +350,12 @@ without the API key; the presigned URL carries its own authorization:
 $ curl -o naif0012.tls "<download_url>"
 ```
 
+To get the files as one zip file instead, add `--zip-name`:
+
+```bash
+$ ema-data-access --url <url> download naif0012.tls de440.bsp --zip-name kernels.zip
+```
+
 ## Importing as a package
 
 ```python
