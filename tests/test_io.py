@@ -739,7 +739,7 @@ def test_metakernel_download_to(mock_send_request, tmp_path):
                 }
             ]
         ),
-        MagicMock(content=b"tls"),
+        MagicMock(iter_content=MagicMock(return_value=[b"tls"])),
     ]
 
     tm_path = ema_data_access.metakernel(
@@ -823,7 +823,7 @@ def test_metakernel_download_to_missing_kernel(mock_send_request, tmp_path):
                 {"filename": "de440.bsp", "status_code": 404, "detail": "Not found."},
             ]
         ),
-        MagicMock(content=b"tls"),
+        MagicMock(iter_content=MagicMock(return_value=[b"tls"])),
     ]
 
     with pytest.raises(EmaDataAccessError, match=r"de440\.bsp: Not found\."):
@@ -931,8 +931,8 @@ def test_download(mock_send_request, tmp_path, monkeypatch):
     }
     mock_send_request.side_effect = [
         mock_presign_response,
-        MagicMock(content=b"tls"),
-        MagicMock(content=b"bsp"),
+        MagicMock(iter_content=MagicMock(return_value=[b"tls"])),
+        MagicMock(iter_content=MagicMock(return_value=[b"bsp"])),
     ]
 
     result = ema_data_access.download(file_names, destination=tmp_path)
@@ -951,6 +951,50 @@ def test_download(mock_send_request, tmp_path, monkeypatch):
     assert get_request.url == "https://s3.example.com/naif0012.tls"
     for call in mock_send_request.call_args_list[1:]:
         assert "x-api-key" not in call[0][0].headers
+
+
+def test_download_failure_removes_partial_file(mock_send_request, tmp_path):
+    """Test a file dropped mid-download raises and leaves no partial file.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    mock_presign_response = MagicMock()
+    mock_presign_response.json.return_value = {
+        "results": [
+            {
+                "filename": "de440.bsp",
+                "status_code": 200,
+                "download_url": "https://s3.example.com/de440.bsp",
+            }
+        ]
+    }
+
+    def _dropped_connection():
+        """Yield one chunk, then fail like a dropped connection.
+
+        Yields
+        ------
+        bytes
+            The first chunk of the file.
+        """
+        yield b"first chunk"
+        raise requests.exceptions.ChunkedEncodingError("Connection broken")
+
+    mock_send_request.side_effect = [
+        mock_presign_response,
+        MagicMock(iter_content=MagicMock(return_value=_dropped_connection())),
+    ]
+
+    with pytest.raises(EmaDataAccessError, match="Connection broken"):
+        ema_data_access.download(["de440.bsp"], destination=tmp_path)
+
+    assert mock_send_request.call_args_list[1].kwargs == {"stream": True}
+    assert not (tmp_path / "de440.bsp").exists()
 
 
 def test_download_rejects_str(mock_send_request, tmp_path):
@@ -1014,7 +1058,10 @@ def test_download_partial_failure(mock_send_request, tmp_path):
             {"filename": names[2], "status_code": 403, "detail": "Unreleased."},
         ]
     }
-    mock_send_request.side_effect = [mock_presign_response, MagicMock(content=b"tls")]
+    mock_send_request.side_effect = [
+        mock_presign_response,
+        MagicMock(iter_content=MagicMock(return_value=[b"tls"])),
+    ]
 
     with pytest.raises(EmaDataAccessError) as excinfo:
         ema_data_access.download(names, destination=tmp_path)

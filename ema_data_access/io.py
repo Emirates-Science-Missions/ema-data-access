@@ -22,12 +22,16 @@ _RETRY_ADAPTER = requests.adapters.HTTPAdapter(max_retries=3)
 
 
 @contextlib.contextmanager
-def _make_request(request: requests.PreparedRequest, authenticate: bool = True):
+def _make_request(
+    request: requests.PreparedRequest, authenticate: bool = True, stream: bool = False
+):
     """Get the response from a URL request using the requests library.
 
     This is a helper function to handle different types of errors that can
     occur when making HTTP requests and yield the response body. Pass
-    ``authenticate=False`` for presigned S3 URLs so the API key isn't sent.
+    ``authenticate=False`` for presigned S3 URLs so the API key isn't sent,
+    and ``stream=True`` to read the body in chunks with ``iter_content``
+    instead of all at once.
     """
     logger.debug("Making request: %s", request)
 
@@ -36,7 +40,7 @@ def _make_request(request: requests.PreparedRequest, authenticate: bool = True):
     try:
         with requests.Session() as session:
             session.mount("https://", _RETRY_ADAPTER)
-            response = session.send(request)
+            response = session.send(request, stream=stream)
             response.raise_for_status()
             yield response
     except requests.exceptions.HTTPError as e:
@@ -635,9 +639,17 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
             method="GET", url=result["download_url"]
         ).prepare()
         logger.info("Downloading %s", result["filename"])
-        with _make_request(get_request, authenticate=False) as file_response:
+        with _make_request(
+            get_request, authenticate=False, stream=True
+        ) as file_response:
             path = destination / result["filename"]
-            path.write_bytes(file_response.content)
+            try:
+                with open(path, "wb") as f:
+                    for chunk in file_response.iter_content(chunk_size=1024 * 1024):
+                        f.write(chunk)
+            except requests.exceptions.RequestException:
+                path.unlink(missing_ok=True)
+                raise
         paths.append(path)
 
     if missing:
