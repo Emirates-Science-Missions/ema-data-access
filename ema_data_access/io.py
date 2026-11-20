@@ -559,7 +559,8 @@ def metakernel(  # noqa: PLR0913
             return response.text
         body = response.json()
 
-    download([r["filename"] for r in body["results"]], destination=download_to)
+    download_to.mkdir(parents=True, exist_ok=True)
+    _download_results(body["results"], download_to)
 
     if tm_name is None:
         start = _window_label(params.get("start_datetime"), start_time)
@@ -612,11 +613,14 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
     TypeError
         If `file_names` is a single str rather than a list.
     EmaDataAccessError
-        If the API can't provide any files, raised after the rest are
+        If more than 1000 files are requested, before anything is sent; or
+        if the API can't provide any files, raised after the rest are
         downloaded.
     """
     if isinstance(file_names, str):
         raise TypeError("file_names must be a list of file names, not a str")
+    if len(file_names) > 1000:
+        raise EmaDataAccessError("At most 1000 files can be downloaded per call.")
 
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
@@ -628,6 +632,29 @@ def download(file_names: list[str], destination: Path | str = ".") -> list[Path]
     with _make_request(request) as response:
         results = response.json()["results"]
 
+    return _download_results(results, destination)
+
+
+def _download_results(results: list[dict], destination: Path) -> list[Path]:
+    """Download each file from its presigned URL.
+
+    Parameters
+    ----------
+    results : list of dict
+        Results from ``/download`` or ``/metakernel?download=true``.
+    destination : pathlib.Path
+        Directory to save the files in.
+
+    Returns
+    -------
+    list of pathlib.Path
+        Path to each downloaded file.
+
+    Raises
+    ------
+    EmaDataAccessError
+        If any files couldn't be downloaded.
+    """
     paths = []
     missing = []
     for result in results:

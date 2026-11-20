@@ -674,43 +674,24 @@ def test_metakernel_require_coverage_error(mock_send_request):
     assert called_params["require_coverage"] == ["True"]
 
 
-def _metakernel_download_response(file_names: list[str]) -> MagicMock:
+def _metakernel_download_response(results: list[dict]) -> MagicMock:
     """Build a mock ``/metakernel?download=true`` response.
 
     Parameters
     ----------
-    file_names : list of str
-        The kernels the metakernel lists.
+    results : list of dict
+        The per-kernel ``results`` entries to return.
 
     Returns
     -------
     unittest.mock.MagicMock
-        A response whose JSON holds the metakernel text and a result per
-        kernel.
+        A response whose JSON holds the metakernel text and `results`.
     """
     response = MagicMock()
     response.json.return_value = {
         "metakernel": "\\begindata\nKERNELS_TO_LOAD = ( )\n\\begintext\n",
-        "results": [{"filename": name} for name in file_names],
+        "results": results,
     }
-    return response
-
-
-def _presign_response(results: list[dict]) -> MagicMock:
-    """Build a mock ``POST /download`` response.
-
-    Parameters
-    ----------
-    results : list of dict
-        The per-file ``results`` entries to return.
-
-    Returns
-    -------
-    unittest.mock.MagicMock
-        A response whose JSON holds `results`.
-    """
-    response = MagicMock()
-    response.json.return_value = {"results": results}
     return response
 
 
@@ -729,8 +710,7 @@ def test_metakernel_download_to(mock_send_request, tmp_path):
     """
     kernel_dir = tmp_path / "kernels"
     mock_send_request.side_effect = [
-        _metakernel_download_response(["naif0012.tls"]),
-        _presign_response(
+        _metakernel_download_response(
             [
                 {
                     "filename": "naif0012.tls",
@@ -756,6 +736,10 @@ def test_metakernel_download_to(mock_send_request, tmp_path):
     called_params = parse_qs(urlparse(sent_request.url).query)
     assert called_params["download"] == ["True"]
     assert called_params["base_path"] == [str(kernel_dir.resolve())]
+    # The kernel is fetched straight from the URL the metakernel call returned.
+    assert mock_send_request.call_count == 2
+    file_request = mock_send_request.call_args_list[1].args[0]
+    assert file_request.url == "https://s3.example.com/naif0012.tls"
 
 
 @pytest.mark.parametrize(
@@ -789,10 +773,7 @@ def test_metakernel_download_to_name(
     expected_name : str
         The file name the metakernel should be saved under.
     """
-    mock_send_request.side_effect = [
-        _metakernel_download_response([]),
-        _presign_response([]),
-    ]
+    mock_send_request.return_value = _metakernel_download_response([])
 
     tm_path = ema_data_access.metakernel(
         **window, download_to=tmp_path, tm_name=tm_name
@@ -812,8 +793,7 @@ def test_metakernel_download_to_missing_kernel(mock_send_request, tmp_path):
         Pytest fixture giving a per-test temporary directory.
     """
     mock_send_request.side_effect = [
-        _metakernel_download_response(["naif0012.tls", "de440.bsp"]),
-        _presign_response(
+        _metakernel_download_response(
             [
                 {
                     "filename": "naif0012.tls",
@@ -1009,6 +989,22 @@ def test_download_rejects_str(mock_send_request, tmp_path):
     """
     with pytest.raises(TypeError, match="list of file names"):
         ema_data_access.download("naif0012.tls", destination=tmp_path)
+
+    mock_send_request.assert_not_called()
+
+
+def test_download_rejects_over_1000(mock_send_request, tmp_path):
+    """Test that more than 1000 files is rejected before anything is sent.
+
+    Parameters
+    ----------
+    mock_send_request : unittest.mock.MagicMock
+        Mock object for ``requests.Session``
+    tmp_path : pathlib.Path
+        Pytest fixture giving a per-test temporary directory.
+    """
+    with pytest.raises(EmaDataAccessError, match="At most 1000 files"):
+        ema_data_access.download(["naif0012.tls"] * 1001, destination=tmp_path)
 
     mock_send_request.assert_not_called()
 
